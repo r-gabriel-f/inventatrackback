@@ -13,11 +13,11 @@ const getProducts = async (req, res) => {
 
 // POST: Crear un nuevo producto
 const createProduct = async (req, res) => {
-  const { material_id, nombre } = req.body;
+  const { material_id, nombre, unidad } = req.body;  // Añadido unidad
   try {
     const result = await db.query(
-      'INSERT INTO productos (material_id, nombre) VALUES ($1, $2) RETURNING *',
-      [material_id, nombre]
+      'INSERT INTO productos (material_id, nombre, unidad) VALUES ($1, $2, $3) RETURNING *',
+      [material_id, nombre, unidad]  // Añadido unidad
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -41,11 +41,11 @@ const deleteProduct = async (req, res) => {
 // UPDATE: Actualizar un producto
 const updateProduct = async (req, res) => {
   const { id } = req.params;
-  const { material_id, nombre } = req.body;
+  const { material_id, nombre, unidad } = req.body;  // Añadido unidad
   try {
     const result = await db.query(
-      'UPDATE productos SET material_id = $1, nombre = $2 WHERE id = $3 RETURNING *',
-      [material_id, nombre, id]
+      'UPDATE productos SET material_id = $1, nombre = $2, unidad = $3 WHERE id = $4 RETURNING *',
+      [material_id, nombre, unidad, id]  // Añadido unidad
     );
     res.json(result.rows[0]);
   } catch (err) {
