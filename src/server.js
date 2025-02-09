@@ -6,6 +6,8 @@ const cors = require('cors');
 const materialRoutes = require('./routers/materials');
 const productRoutes = require('./routers/products');
 const exitRoutes = require('./routers/salida');
+const reportRoutes = require("./routers/reports");
+
 app.use(cors());
 app.use(express.json());
 
@@ -13,6 +15,7 @@ app.use(express.json());
 app.use('/api', materialRoutes);
 app.use('/api', productRoutes);
 app.use('/api', exitRoutes);
+app.use('/api', reportRoutes);
 
 // Iniciar el servidor
 const PORT = process.env.PORT || 3000;
