@@ -41,19 +41,13 @@ const getSalidaById = async (req, res) => {
 // POST: Crear una nueva salida
 const createSalida = async (req, res) => {
   const { material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador } = req.body;
+  console.log(material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador);
   try {
-    // Obtener la unidad del producto
-    const productoResult = await db.query('SELECT unidad FROM productos WHERE id = $1', [producto_id]);
-    if (productoResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Producto no encontrado' });
-    }
-    const unidad = productoResult.rows[0].unidad;
-
-    // Insertar la salida
+    // Insertar la salida sin la columna 'unidad'
     const result = await db.query(
-      `INSERT INTO salidas (material_id, producto_id, nivel, responsable_nombre, unidad, cantidad, rumpero, trabajador) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING *`,
-      [material_id, producto_id, nivel, responsable_nombre, unidad, cantidad, rumpero, trabajador]
+      `INSERT INTO salidas (material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING *`,
+      [material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador]
     );
     res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -67,18 +61,11 @@ const updateSalida = async (req, res) => {
   const { id } = req.params;
   const { material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador } = req.body;
   try {
-    // Obtener la unidad del producto
-    const productoResult = await db.query('SELECT unidad FROM productos WHERE id = $1', [producto_id]);
-    if (productoResult.rows.length === 0) {
-      return res.status(404).json({ message: 'Producto no encontrado' });
-    }
-    const unidad = productoResult.rows[0].unidad;
-
-    // Actualizar la salida
+    // Actualizar la salida sin la columna 'unidad'
     const result = await db.query(
-      `UPDATE salidas SET material_id = $1, producto_id = $2, nivel = $3, responsable_nombre = $4, unidad = $5, cantidad = $6, rumpero = $7, trabajador = $8
-       WHERE id = $9 RETURNING *`,
-      [material_id, producto_id, nivel, responsable_nombre, unidad, cantidad, rumpero, trabajador, id]
+      `UPDATE salidas SET material_id = $1, producto_id = $2, nivel = $3, responsable_nombre = $4, cantidad = $5, rumpero = $6, trabajador = $7
+       WHERE id = $8 RETURNING *`,
+      [material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador, id]
     );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Salida no encontrada" });
