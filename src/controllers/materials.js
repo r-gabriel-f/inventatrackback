@@ -1,55 +1,51 @@
 const db = require('../db');
 
 // GET: Obtener todos los materiales
-const getMaterials = (req, res) => {
-  db.all('SELECT * FROM materiales', [], (err, rows) => {
-    if (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Error al obtener materiales' });
-      return;
-    }
-    res.json(rows);
-  });
+const getMaterials = async (req, res) => {
+  try {
+    const result = await db.query('SELECT * FROM materiales');
+    res.json(result.rows);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al obtener materiales' });
+  }
 };
 
 // POST: Crear un nuevo material
-const createMaterial = (req, res) => {
+const createMaterial = async (req, res) => {
   const { nombre } = req.body;
-  db.run('INSERT INTO materiales (nombre) VALUES (?)', [nombre], function (err) {
-    if (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Error al crear material' });
-      return;
-    }
-    res.status(201).json({ id: this.lastID, nombre });
-  });
+  try {
+    const result = await db.query('INSERT INTO materiales (nombre) VALUES ($1) RETURNING *', [nombre]);
+    res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al crear material' });
+  }
 };
 
 // DELETE: Eliminar un material
-const deleteMaterial = (req, res) => {
+const deleteMaterial = async (req, res) => {
   const { id } = req.params;
-  db.run('DELETE FROM materiales WHERE id = ?', [id], function (err) {
-    if (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Error al eliminar material' });
-      return;
-    }
+  try {
+    await db.query('DELETE FROM materiales WHERE id = $1', [id]);
     res.status(204).send();
-  });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al eliminar material' });
+  }
 };
 
 // UPDATE: Actualizar un material
-const updateMaterial = (req, res) => {
+const updateMaterial = async (req, res) => {
   const { id } = req.params;
   const { nombre } = req.body;
-  db.run('UPDATE materiales SET nombre = ? WHERE id = ?', [nombre, id], function (err) {
-    if (err) {
-      console.error(err);
-      res.status(500).json({ message: 'Error al actualizar material' });
-      return;
-    }
-    res.json({ id, nombre });
-  });
+  try {
+    const result = await db.query('UPDATE materiales SET nombre = $1 WHERE id = $2 RETURNING *', [nombre, id]);
+    res.json(result.rows[0]);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Error al actualizar material' });
+  }
 };
 
 module.exports = {

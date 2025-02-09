@@ -1,14 +1,18 @@
 // server.js
 const express = require('express');
 const app = express();
+const cors = require('cors');
+
 const materialRoutes = require('./routers/materials');
 const productRoutes = require('./routers/products');
-
-app.use(express.json()); // Middleware para parsear JSON
+const exitRoutes = require('./routers/salida');
+app.use(cors());
+app.use(express.json());
 
 // Rutas
 app.use('/api', materialRoutes);
 app.use('/api', productRoutes);
+app.use('/api', exitRoutes);
 
 // Iniciar el servidor
 const PORT = process.env.PORT || 3000;
