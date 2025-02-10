@@ -62,7 +62,7 @@ const generateReport = async (req, res) => {
     doc.image(logoPath, doc.page.margins.left, 30, { width: logoSize, height: logoSize });
 
     // Encabezado con título
-    doc.text("EMPRESA MINERA HUANUNI\nASISTENTE SUPERINTENDENCIA MINA", 0, 45, {
+    doc.text("EMPRESA MINERA HUANUNI\nASISTENCIA SUPERINTENDENCIA MINA", 0, 45, {
       align: "center",
       width: doc.page.width,
     });
