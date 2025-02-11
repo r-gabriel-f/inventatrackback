@@ -15,7 +15,8 @@ const generateReport = async (req, res) => {
        FROM salidas s 
        JOIN materiales m ON s.material_id = m.id 
        JOIN productos p ON s.producto_id = p.id
-       WHERE DATE(s.fecha_salida) = $1`,
+       WHERE DATE(s.fecha_salida) = $1
+       ORDER BY m.nombre, s.nivel, s.fecha_salida DESC`,
       [fechaHoy]
     );
 
@@ -87,10 +88,10 @@ const generateReport = async (req, res) => {
     const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
     // Definir proporciones de las columnas
-    const columnProportions = [5, 12, 12, 8, 8, 8, 12, 12, 12, 11];
+    const columnProportions = [5, 12, 12, 13, 8, 8, 12, 12, 12, 11];
     const columnWidths = columnProportions.map((proportion) => Math.floor((pageWidth * proportion) / 100));
 
-    const headers = ["ID", "Material", "Producto", "Unidad", "Nivel", "Cantidad", "Responsable", "Rumpero", "Trabajador", "Fecha"];
+    const headers = ["ID", "Nivel", "Material", "Producto", "Unidad", "Cantidad", "Responsable", "Rumpero", "Trabajador", "Fecha"];
     const headerColor = "#0066cc";
 
     const getXPosition = (index) => {
@@ -118,17 +119,18 @@ const generateReport = async (req, res) => {
     let yPosition = doc.y + 10;
     salidas.forEach((s) => {
       doc.fontSize(8);
-      const rowHeight = 20;
+      const rowHeight = 30;
 
       const writeCell = (text, x, width) => {
         doc.text(text || "-", x, yPosition, { width: width, height: rowHeight, ellipsis: true });
       };
 
       writeCell(s.id.toString(), getXPosition(0), columnWidths[0]);
-      writeCell(s.material, getXPosition(1), columnWidths[1]);
-      writeCell(s.producto, getXPosition(2), columnWidths[2]);
-      writeCell(s.unidad, getXPosition(3), columnWidths[3]);
-      writeCell(s.nivel, getXPosition(4), columnWidths[4]);
+      writeCell(s.nivel, getXPosition(1), columnWidths[1]);
+      writeCell(s.material, getXPosition(2), columnWidths[2]);
+      writeCell(s.producto, getXPosition(3), columnWidths[3]);
+      writeCell(s.unidad, getXPosition(4), columnWidths[4]);
+
       writeCell(s.cantidad.toString(), getXPosition(5), columnWidths[5]);
       writeCell(s.responsable_nombre, getXPosition(6), columnWidths[6]);
       writeCell(s.rumpero, getXPosition(7), columnWidths[7]);

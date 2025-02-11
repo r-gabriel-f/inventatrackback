@@ -3,18 +3,26 @@ const db = require("../db");
 // GET: Obtener todas las salidas
 const getSalidas = async (req, res) => {
   try {
-    const result = await db.query(
-      `SELECT s.id, m.nombre AS material, p.nombre AS producto, p.unidad, s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida
-       FROM salidas s 
-       JOIN materiales m ON s.material_id = m.id 
-       JOIN productos p ON s.producto_id = p.id`
-    );
+    const { todas } = req.query; // Recibir parámetro desde el frontend
+    let query = `
+      SELECT s.id, m.nombre AS material, p.nombre AS producto, p.unidad, 
+             s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida
+      FROM salidas s 
+      JOIN materiales m ON s.material_id = m.id 
+      JOIN productos p ON s.producto_id = p.id`;
+
+    if (!todas || todas === "false") {
+      query += ` WHERE DATE(s.fecha_salida) = CURRENT_DATE`; // Solo los de hoy
+    }
+
+    const result = await db.query(query);
     res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al obtener salidas" });
   }
 };
+
 
 // GET: Obtener una salida por ID
 const getSalidaById = async (req, res) => {
