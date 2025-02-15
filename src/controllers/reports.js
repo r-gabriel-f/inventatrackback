@@ -10,13 +10,13 @@ const generateReport = async (req, res) => {
 
     // Consulta las salidas del día
     const result = await db.query(
-      `SELECT s.id, m.nombre AS material, p.nombre AS producto, s.nivel, s.responsable_nombre, 
+      `SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, s.nivel, s.responsable_nombre, 
               s.fecha_salida, p.unidad, s.rumpero, s.trabajador, s.cantidad
        FROM salidas s 
        JOIN materiales m ON s.material_id = m.id 
        JOIN productos p ON s.producto_id = p.id
        WHERE DATE(s.fecha_salida) = $1
-       ORDER BY  s.nivel, m.nombre, s.fecha_salida DESC`,
+       ORDER BY s.nivel, m.nombre, s.fecha_salida DESC`,
       [fechaHoy]
     );
 
@@ -32,16 +32,12 @@ const generateReport = async (req, res) => {
     let qrData = `Reporte de Salidas - ${fechaHoy}\n\n`;
 
     // Encabezados
-    qrData += `ID | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
-    qrData += `-------------------------------------------------------------------------------------------\n`;
+    qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
+    qrData += `----------------------------------------------------------------------------------------------\n`;
 
     // Filas con los datos de la tabla
     salidas.forEach((s) => {
-      qrData += `${s.id} | ${s.material} | ${s.producto} | ${s.unidad} | ${
-        s.nivel
-      } | ${s.cantidad} | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${
-        s.trabajador || "-"
-      } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
+      qrData += `${s.codigo} | ${s.material} | ${s.producto} | ${s.unidad} | ${s.nivel} | ${s.cantidad} | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${s.trabajador || "-"} | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
     });
 
     // Generar código QR
@@ -105,13 +101,13 @@ const generateReport = async (req, res) => {
       doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
     // Definir proporciones de las columnas
-    const columnProportions = [5, 12, 12, 13, 8, 8, 12, 12, 12, 11];
+    const columnProportions = [7, 12, 12, 13, 8, 8, 12, 12, 10, 11];
     const columnWidths = columnProportions.map((proportion) =>
       Math.floor((pageWidth * proportion) / 100)
     );
 
     const headers = [
-      "ID",
+      "Código",
       "Nivel",
       "Material",
       "Producto",
@@ -164,13 +160,11 @@ const generateReport = async (req, res) => {
           ellipsis: true,
         });
       };
-
-      writeCell(s.id.toString(), getXPosition(0), columnWidths[0]);
+      writeCell(s.codigo, getXPosition(0), columnWidths[0]);
       writeCell(s.nivel, getXPosition(1), columnWidths[1]);
       writeCell(s.material, getXPosition(2), columnWidths[2]);
       writeCell(s.producto, getXPosition(3), columnWidths[3]);
       writeCell(s.unidad, getXPosition(4), columnWidths[4]);
-
       writeCell(s.cantidad.toString(), getXPosition(5), columnWidths[5]);
       writeCell(s.responsable_nombre, getXPosition(6), columnWidths[6]);
       writeCell(s.rumpero, getXPosition(7), columnWidths[7]);
@@ -199,7 +193,7 @@ const generateReport = async (req, res) => {
 };
 const generateMonthlyReport = async (req, res) => {
   try {
-    const yearMonth = req.params.yearMonth; // Recibe "2022-01" directamente
+    const yearMonth = req.params.yearMonth;
 
     // Validar formato YYYY-MM
     if (!moment(yearMonth, "YYYY-MM", true).isValid()) {
@@ -214,7 +208,7 @@ const generateMonthlyReport = async (req, res) => {
 
     // Consulta las salidas del mes con nuevo orden
     const result = await db.query(
-      `SELECT s.id, m.nombre AS material, p.nombre AS producto, s.nivel, s.responsable_nombre, 
+      `SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, s.nivel, s.responsable_nombre, 
               s.fecha_salida, p.unidad, s.rumpero, s.trabajador, s.cantidad
        FROM salidas s 
        JOIN materiales m ON s.material_id = m.id 
@@ -236,7 +230,7 @@ const generateMonthlyReport = async (req, res) => {
     let qrData = `Reporte Mensual de Salidas - ${yearMonth}\n\n`;
 
     // Encabezados
-    qrData += `ID | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
+    qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
     qrData += `-------------------------------------------------------------------------------------------\n`;
 
     // Filas con los datos de la tabla
@@ -312,13 +306,13 @@ const generateMonthlyReport = async (req, res) => {
       doc.page.width - doc.page.margins.left - doc.page.margins.right;
 
     // Definir proporciones de las columnas
-    const columnProportions = [5, 12, 12, 13, 8, 8, 12, 12, 12, 11];
+    const columnProportions = [7, 12, 12, 13, 8, 8, 12, 12, 10, 11];
     const columnWidths = columnProportions.map((proportion) =>
       Math.floor((pageWidth * proportion) / 100)
     );
 
     const headers = [
-      "ID",
+      "Código",
       "Nivel",
       "Material",
       "Producto",
@@ -372,7 +366,7 @@ const generateMonthlyReport = async (req, res) => {
         });
       };
 
-      writeCell(s.id.toString(), getXPosition(0), columnWidths[0]);
+      writeCell(s.codigo, getXPosition(0), columnWidths[0]);
       writeCell(s.nivel, getXPosition(1), columnWidths[1]);
       writeCell(s.material, getXPosition(2), columnWidths[2]);
       writeCell(s.producto, getXPosition(3), columnWidths[3]);
@@ -437,7 +431,6 @@ const generateMonthlyReportTotal = async (req, res) => {
         message: `No hay salidas registradas para el mes ${month} del año ${year}`,
       });
     }
-
     // Crear contenido del QR con formato de tabla
     let qrData = `Reporte Mensual de Salidas - ${yearMonth}\n\n`;
 
