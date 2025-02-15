@@ -37,7 +37,11 @@ const generateReport = async (req, res) => {
 
     // Filas con los datos de la tabla
     salidas.forEach((s) => {
-      qrData += `${s.codigo} | ${s.material} | ${s.producto} | ${s.unidad} | ${s.nivel} | ${s.cantidad} | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${s.trabajador || "-"} | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
+      qrData += `${s.codigo} | ${s.material} | ${s.producto} | ${s.unidad} | ${
+        s.nivel
+      } | ${s.cantidad} | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${
+        s.trabajador || "-"
+      } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
     });
 
     // Generar código QR
@@ -93,6 +97,13 @@ const generateReport = async (req, res) => {
       width: doc.page.width,
     });
 
+    doc.moveDown(1);
+
+    const qrSize = 80;
+    doc.image(qrImage, doc.page.width - doc.page.margins.right - qrSize, 30, {
+      width: qrSize,
+      height: qrSize,
+    });
     doc.moveDown(2);
 
     // Configuración de la tabla
@@ -149,9 +160,15 @@ const generateReport = async (req, res) => {
       .stroke();
 
     let yPosition = doc.y + 10;
-    salidas.forEach((s) => {
+    const rowHeight = 30;
+    salidas.forEach((s, index) => {
+      // Comprobar si se alcanzó el final de la página
+      if (yPosition + rowHeight > doc.page.height - doc.page.margins.bottom) {
+        doc.addPage(); // Agregar nueva página
+        yPosition = doc.y; // Resetear la posición
+      }
+
       doc.fontSize(8);
-      const rowHeight = 30;
 
       const writeCell = (text, x, width) => {
         doc.text(text || "-", x, yPosition, {
@@ -179,11 +196,6 @@ const generateReport = async (req, res) => {
     });
 
     // Agregar código QR al PDF
-    const qrSize = 80;
-    doc.image(qrImage, doc.page.width - doc.page.margins.right - qrSize, 30, {
-      width: qrSize,
-      height: qrSize,
-    });
 
     doc.end();
   } catch (err) {
@@ -197,11 +209,9 @@ const generateMonthlyReport = async (req, res) => {
 
     // Validar formato YYYY-MM
     if (!moment(yearMonth, "YYYY-MM", true).isValid()) {
-      return res
-        .status(400)
-        .json({
-          message: "Formato de fecha inválido. Use YYYY-MM (ejemplo: 2022-01)",
-        });
+      return res.status(400).json({
+        message: "Formato de fecha inválido. Use YYYY-MM (ejemplo: 2022-01)",
+      });
     }
 
     const [year, month] = yearMonth.split("-");
@@ -290,15 +300,33 @@ const generateMonthlyReport = async (req, res) => {
     doc.moveDown(0.5);
 
     // Texto del reporte con mes y año
-    const monthName = moment(yearMonth).format("MMMM");
+    const monthName = moment(yearMonth).locale("es").format("MMMM");
+    const capitalizedMonthName =
+      monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
     doc
       .fontSize(12)
-      .text(`Reporte Mensual de Salidas - ${monthName} ${year}`, 0, doc.y, {
-        align: "center",
-        width: doc.page.width,
-      });
+      .text(
+        `Reporte Mensual de Salidas - ${capitalizedMonthName} ${year}`,
+        0,
+        doc.y,
+        {
+          align: "center",
+          width: doc.page.width,
+        }
+      );
 
-    doc.moveDown(2);
+    // **Agregar espacio antes del QR**
+    doc.moveDown(1); // Ajusta este valor si el QR se sobrepone al contenido
+
+    // Agregar código QR al PDF
+    const qrSize = 80;
+    doc.image(qrImage, doc.page.width - doc.page.margins.right - qrSize, 30, {
+      width: qrSize,
+      height: qrSize,
+    });
+
+    doc.moveDown(2); // Mueve hacia abajo antes de comenzar la tabla
 
     // Configuración de la tabla
     const tableTop = doc.y;
@@ -354,9 +382,15 @@ const generateMonthlyReport = async (req, res) => {
       .stroke();
 
     let yPosition = doc.y + 10;
-    salidas.forEach((s) => {
+    const rowHeight = 30;
+    salidas.forEach((s, index) => {
+      // Comprobar si se alcanzó el final de la página
+      if (yPosition + rowHeight > doc.page.height - doc.page.margins.bottom) {
+        doc.addPage(); // Agregar nueva página
+        yPosition = doc.y; // Resetear la posición
+      }
+
       doc.fontSize(8);
-      const rowHeight = 30;
 
       const writeCell = (text, x, width) => {
         doc.text(text || "-", x, yPosition, {
@@ -384,25 +418,21 @@ const generateMonthlyReport = async (req, res) => {
       yPosition += rowHeight;
     });
 
-    // Agregar código QR al PDF
-    const qrSize = 80;
-    doc.image(qrImage, doc.page.width - doc.page.margins.right - qrSize, 30, {
-      width: qrSize,
-      height: qrSize,
-    });
-
     doc.end();
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al generar el reporte mensual" });
   }
 };
+
 const generateMonthlyReportTotal = async (req, res) => {
   try {
     const yearMonth = req.params.yearMonth;
 
     if (!moment(yearMonth, "YYYY-MM", true).isValid()) {
-      return res.status(400).json({ message: "Formato de fecha inválido. Use YYYY-MM" });
+      return res
+        .status(400)
+        .json({ message: "Formato de fecha inválido. Use YYYY-MM" });
     }
 
     const [year, month] = yearMonth.split("-");
@@ -431,6 +461,7 @@ const generateMonthlyReportTotal = async (req, res) => {
         message: `No hay salidas registradas para el mes ${month} del año ${year}`,
       });
     }
+
     // Crear contenido del QR con formato de tabla
     let qrData = `Reporte Mensual de Salidas - ${yearMonth}\n\n`;
 
@@ -483,10 +514,14 @@ const generateMonthlyReportTotal = async (req, res) => {
       .stroke();
 
     doc.moveDown(0.5);
+    const monthName = moment(yearMonth).locale("es").format("MMMM");
+    const capitalizedMonthName =
+      monthName.charAt(0).toUpperCase() + monthName.slice(1);
+
     doc
       .fontSize(12)
       .text(
-        `Reporte Mensual de Salidas - ${moment(yearMonth).format("MMMM YYYY")}`,
+        `Reporte Mensual de Salidas Totales - ${capitalizedMonthName} ${year}`,
         0,
         doc.y,
         {
@@ -495,18 +530,31 @@ const generateMonthlyReportTotal = async (req, res) => {
         }
       );
 
+    // Agregar código QR al PDF
+    doc.moveDown(1);
+    const qrSize = 80;
+    doc.image(qrImage, doc.page.width - doc.page.margins.right - qrSize, 30, {
+      width: qrSize,
+      height: qrSize,
+    });
     doc.moveDown(2);
 
     // Configuración de la tabla
     const tableTop = doc.y;
     const pageWidth =
       doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const columnProportions = [20, 25, 25, 15, 15];; // Nivel, Material, Producto, Unidad, Total Cantidad
+    const columnProportions = [20, 25, 25, 15, 15]; // Nivel, Material, Producto, Unidad, Total Cantidad
     const columnWidths = columnProportions.map((proportion) =>
       Math.floor((pageWidth * proportion) / 100)
     );
 
-    const headers = ["Nivel", "Material", "Producto", "Unidad", "Total Cantidad"];
+    const headers = [
+      "Nivel",
+      "Material",
+      "Producto",
+      "Unidad",
+      "Total Cantidad",
+    ];
     const headerColor = "#0066cc";
 
     const getXPosition = (index) => {
@@ -538,9 +586,15 @@ const generateMonthlyReportTotal = async (req, res) => {
       .stroke();
 
     let yPosition = doc.y + 10;
-    salidas.forEach((s) => {
+    const rowHeight = 30;
+    salidas.forEach((s, index) => {
+      // Comprobar si se alcanzó el final de la página
+      if (yPosition + rowHeight > doc.page.height - doc.page.margins.bottom) {
+        doc.addPage(); // Agregar nueva página
+        yPosition = doc.y; // Resetear la posición
+      }
+
       doc.fontSize(8);
-      const rowHeight = 30;
 
       const writeCell = (text, x, width) => {
         doc.text(text || "-", x, yPosition, {
@@ -559,20 +613,12 @@ const generateMonthlyReportTotal = async (req, res) => {
       yPosition += rowHeight;
     });
 
-    // Agregar código QR al PDF
-    const qrSize = 80;
-    doc.image(qrImage, doc.page.width - doc.page.margins.right - qrSize, 30, {
-      width: qrSize,
-      height: qrSize,
-    });
-
     doc.end();
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al generar el reporte mensual" });
   }
 };
-
 
 module.exports = {
   generateReport,
