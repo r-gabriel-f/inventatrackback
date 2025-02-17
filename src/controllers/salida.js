@@ -6,11 +6,11 @@ const getSalidas = async (req, res) => {
     const { todas } = req.query; // Recibir parámetro desde el frontend
     let query = `
       SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, p.unidad, 
-             s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida
+             s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida, s.status
       FROM salidas s 
       JOIN materiales m ON s.material_id = m.id 
       JOIN productos p ON s.producto_id = p.id 
-      WHERE m.status = 1`; // Filtrar solo materiales activos
+      WHERE m.status = 1 AND s.status = 1`; // Filtrar solo materiales activos
 
     if (!todas || todas === "false") {
       query += ` AND DATE(s.fecha_salida) = CURRENT_DATE`; // Solo los de hoy
@@ -24,18 +24,19 @@ const getSalidas = async (req, res) => {
   }
 };
 
-
 // GET: Obtener una salida por ID
 const getSalidaById = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await db.query(
       `SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, p.unidad, 
-              s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida
+              s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida, s.status,
+              s.material_id, s.producto_id
        FROM salidas s 
        JOIN materiales m ON s.material_id = m.id 
        JOIN productos p ON s.producto_id = p.id
-       WHERE s.id = $1`,
+       WHERE s.id = $1
+`,
       [id]
     );
     if (result.rows.length === 0) {
@@ -50,13 +51,29 @@ const getSalidaById = async (req, res) => {
 
 // POST: Crear una nueva salida
 const createSalida = async (req, res) => {
-  const { material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador } = req.body;
+  const {
+    material_id,
+    producto_id,
+    nivel,
+    responsable_nombre,
+    cantidad,
+    rumpero,
+    trabajador,
+  } = req.body;
   try {
-    // Insertar la salida y devolver el ID generado
+    // Insertar la salida con el valor de status = 1 por defecto
     const result = await db.query(
-      `INSERT INTO salidas (material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7) RETURNING id`,
-      [material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador]
+      `INSERT INTO salidas (material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador, status) 
+       VALUES ($1, $2, $3, $4, $5, $6, $7, 1) RETURNING id`,
+      [
+        material_id,
+        producto_id,
+        nivel,
+        responsable_nombre,
+        cantidad,
+        rumpero,
+        trabajador,
+      ]
     );
 
     const salidaId = result.rows[0].id;
@@ -66,7 +83,7 @@ const createSalida = async (req, res) => {
       `SELECT LOWER(LEFT(nombre, 3)) AS codigo_material FROM materiales WHERE id = $1`,
       [material_id]
     );
-    
+
     if (materialResult.rows.length === 0) {
       return res.status(400).json({ message: "Material no encontrado" });
     }
@@ -74,7 +91,10 @@ const createSalida = async (req, res) => {
     const codigo = `${materialResult.rows[0].codigo_material}${salidaId}`;
 
     // Actualizar la salida con el código generado
-    await db.query(`UPDATE salidas SET codigo = $1 WHERE id = $2`, [codigo, salidaId]);
+    await db.query(`UPDATE salidas SET codigo = $1 WHERE id = $2`, [
+      codigo,
+      salidaId,
+    ]);
 
     // Obtener la salida con el código generado
     const salidaCompleta = await db.query(
@@ -92,14 +112,33 @@ const createSalida = async (req, res) => {
 // PUT: Actualizar una salida
 const updateSalida = async (req, res) => {
   const { id } = req.params;
-  const { material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador } = req.body;
+  const {
+    material_id,
+    producto_id,
+    nivel,
+    responsable_nombre,
+    cantidad,
+    rumpero,
+    trabajador,
+    status,
+  } = req.body; // Desestructuramos 'status' también
   try {
-    // Actualizar la salida
+    // Actualizar la salida incluyendo 'status'
     const result = await db.query(
       `UPDATE salidas 
-       SET material_id = $1, producto_id = $2, nivel = $3, responsable_nombre = $4, cantidad = $5, rumpero = $6, trabajador = $7
-       WHERE id = $8 RETURNING *`,
-      [material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador, id]
+       SET material_id = $1, producto_id = $2, nivel = $3, responsable_nombre = $4, cantidad = $5, rumpero = $6, trabajador = $7, status = $8
+       WHERE id = $9 RETURNING *`,
+      [
+        material_id,
+        producto_id,
+        nivel,
+        responsable_nombre,
+        cantidad,
+        rumpero,
+        trabajador,
+        status,
+        id,
+      ] // Agregamos 'status' en la lista de parámetros
     );
 
     if (result.rows.length === 0) {
@@ -119,10 +158,16 @@ const updateSalida = async (req, res) => {
     const codigo = `${materialResult.rows[0].codigo_material}${id}`;
 
     // Actualizar el código
-    await db.query(`UPDATE salidas SET codigo = $1 WHERE id = $2`, [codigo, id]);
+    await db.query(`UPDATE salidas SET codigo = $1 WHERE id = $2`, [
+      codigo,
+      id,
+    ]);
 
     // Obtener la salida actualizada
-    const salidaActualizada = await db.query(`SELECT * FROM salidas WHERE id = $1`, [id]);
+    const salidaActualizada = await db.query(
+      `SELECT * FROM salidas WHERE id = $1`,
+      [id]
+    );
 
     res.json(salidaActualizada.rows[0]);
   } catch (err) {
@@ -135,7 +180,10 @@ const updateSalida = async (req, res) => {
 const deleteSalida = async (req, res) => {
   const { id } = req.params;
   try {
-    const result = await db.query("DELETE FROM salidas WHERE id = $1 RETURNING *", [id]);
+    const result = await db.query(
+      "DELETE FROM salidas WHERE id = $1 RETURNING *",
+      [id]
+    );
     if (result.rows.length === 0) {
       return res.status(404).json({ message: "Salida no encontrada" });
     }
