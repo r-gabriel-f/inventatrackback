@@ -17,6 +17,7 @@ const generateReport = async (req, res) => {
        JOIN productos p ON s.producto_id = p.id
        WHERE DATE(s.fecha_salida) = $1
        AND m.status = 1
+       AND s.status = 1
        ORDER BY s.nivel, m.nombre, s.fecha_salida DESC`,
       [fechaHoy]
     );
@@ -226,6 +227,7 @@ const generateMonthlyReport = async (req, res) => {
        JOIN productos p ON s.producto_id = p.id
        WHERE TO_CHAR(s.fecha_salida, 'YYYY-MM') = $1
        AND m.status = 1
+       AND s.status = 1
        ORDER BY s.nivel, m.nombre DESC`,
       [yearMonth]
     );
@@ -452,6 +454,7 @@ const generateMonthlyReportTotal = async (req, res) => {
       JOIN productos p ON s.producto_id = p.id  
       WHERE TO_CHAR(s.fecha_salida, 'YYYY-MM') = $1
       AND m.status = 1
+      AND s.status = 1
       GROUP BY s.nivel, m.nombre, p.nombre, p.unidad  
       ORDER BY s.nivel, m.nombre DESC;`,
       [yearMonth]
