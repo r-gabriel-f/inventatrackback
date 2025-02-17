@@ -9,10 +9,11 @@ const getSalidas = async (req, res) => {
              s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida
       FROM salidas s 
       JOIN materiales m ON s.material_id = m.id 
-      JOIN productos p ON s.producto_id = p.id`;
+      JOIN productos p ON s.producto_id = p.id 
+      WHERE m.status = 1`; // Filtrar solo materiales activos
 
     if (!todas || todas === "false") {
-      query += ` WHERE DATE(s.fecha_salida) = CURRENT_DATE`; // Solo los de hoy
+      query += ` AND DATE(s.fecha_salida) = CURRENT_DATE`; // Solo los de hoy
     }
 
     const result = await db.query(query);
@@ -22,6 +23,7 @@ const getSalidas = async (req, res) => {
     res.status(500).json({ message: "Error al obtener salidas" });
   }
 };
+
 
 // GET: Obtener una salida por ID
 const getSalidaById = async (req, res) => {
