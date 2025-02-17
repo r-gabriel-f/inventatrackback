@@ -1,9 +1,9 @@
 const db = require('../db');
 
-// GET: Obtener todos los materiales
+// GET: Obtener todos los materiales con status = 1
 const getMaterials = async (req, res) => {
   try {
-    const result = await db.query('SELECT * FROM materiales');
+    const result = await db.query('SELECT * FROM materiales WHERE status = 1');
     res.json(result.rows);
   } catch (err) {
     console.error(err);
@@ -11,11 +11,14 @@ const getMaterials = async (req, res) => {
   }
 };
 
-// POST: Crear un nuevo material
+// POST: Crear un nuevo material con status = 1 por defecto
 const createMaterial = async (req, res) => {
   const { nombre } = req.body;
   try {
-    const result = await db.query('INSERT INTO materiales (nombre) VALUES ($1) RETURNING *', [nombre]);
+    const result = await db.query(
+      'INSERT INTO materiales (nombre, status) VALUES ($1, 1) RETURNING *',
+      [nombre]
+    );
     res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error(err);
@@ -23,11 +26,11 @@ const createMaterial = async (req, res) => {
   }
 };
 
-// DELETE: Eliminar un material
+// DELETE: Eliminar un material (borrado lógico, cambia status a 0 en lugar de eliminar)
 const deleteMaterial = async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('DELETE FROM materiales WHERE id = $1', [id]);
+    await db.query('UPDATE materiales SET status = 0 WHERE id = $1', [id]);
     res.status(204).send();
   } catch (err) {
     console.error(err);
@@ -35,12 +38,15 @@ const deleteMaterial = async (req, res) => {
   }
 };
 
-// UPDATE: Actualizar un material
+// UPDATE: Actualizar un material (permitiendo cambiar nombre y status)
 const updateMaterial = async (req, res) => {
   const { id } = req.params;
-  const { nombre } = req.body;
+  const { nombre, status } = req.body;
   try {
-    const result = await db.query('UPDATE materiales SET nombre = $1 WHERE id = $2 RETURNING *', [nombre, id]);
+    const result = await db.query(
+      'UPDATE materiales SET nombre = $1, status = $2 WHERE id = $3 RETURNING *',
+      [nombre, status, id]
+    );
     res.json(result.rows[0]);
   } catch (err) {
     console.error(err);
