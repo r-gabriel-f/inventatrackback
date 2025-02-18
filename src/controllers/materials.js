@@ -16,7 +16,7 @@ const createMaterial = async (req, res) => {
   const { nombre } = req.body;
   try {
     const result = await db.query(
-      'INSERT INTO materiales (nombre, status) VALUES ($1, 1) RETURNING *',
+      'INSERT INTO materiales (nombre, status) VALUES (?, 1)',
       [nombre]
     );
     res.status(201).json(result.rows[0]);
@@ -30,7 +30,7 @@ const createMaterial = async (req, res) => {
 const deleteMaterial = async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('UPDATE materiales SET status = 0 WHERE id = $1', [id]);
+    await db.query('UPDATE materiales SET status = 0 WHERE id = ?', [id]);
     res.status(204).send();
   } catch (err) {
     console.error(err);
@@ -44,7 +44,7 @@ const updateMaterial = async (req, res) => {
   const { nombre, status } = req.body;
   try {
     const result = await db.query(
-      'UPDATE materiales SET nombre = $1, status = $2 WHERE id = $3 RETURNING *',
+      'UPDATE materiales SET nombre = ?, status = ? WHERE id = ?',
       [nombre, status, id]
     );
     res.json(result.rows[0]);

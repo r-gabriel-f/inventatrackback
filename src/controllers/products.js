@@ -16,10 +16,11 @@ const createProduct = async (req, res) => {
   const { material_id, nombre, unidad } = req.body;  // Añadido unidad
   try {
     const result = await db.query(
-      'INSERT INTO productos (material_id, nombre, unidad) VALUES ($1, $2, $3) RETURNING *',
-      [material_id, nombre, unidad]  // Añadido unidad
+      'INSERT INTO productos (material_id, nombre, unidad) VALUES (?, ?, ?)',
+      [material_id, nombre, unidad]
     );
-    res.status(201).json(result.rows[0]);
+    const newProduct = await db.query('SELECT * FROM productos WHERE id = last_insert_rowid()');
+    res.status(201).json(newProduct.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al crear producto' });
@@ -30,7 +31,7 @@ const createProduct = async (req, res) => {
 const deleteProduct = async (req, res) => {
   const { id } = req.params;
   try {
-    await db.query('DELETE FROM productos WHERE id = $1', [id]);
+    await db.query('DELETE FROM productos WHERE id = ?', [id]);
     res.status(204).send();
   } catch (err) {
     console.error(err);
@@ -44,10 +45,11 @@ const updateProduct = async (req, res) => {
   const { material_id, nombre, unidad } = req.body;  // Añadido unidad
   try {
     const result = await db.query(
-      'UPDATE productos SET material_id = $1, nombre = $2, unidad = $3 WHERE id = $4 RETURNING *',
-      [material_id, nombre, unidad, id]  // Añadido unidad
+      'UPDATE productos SET material_id = ?, nombre = ?, unidad = ? WHERE id = ?',
+      [material_id, nombre, unidad, id]
     );
-    res.json(result.rows[0]);
+    const updatedProduct = await db.query('SELECT * FROM productos WHERE id = ?', [id]);
+    res.json(updatedProduct.rows[0]);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Error al actualizar producto' });

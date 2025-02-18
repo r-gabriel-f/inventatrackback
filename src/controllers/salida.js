@@ -13,7 +13,7 @@ const getSalidas = async (req, res) => {
       WHERE m.status = 1 AND s.status = 1`; // Filtrar solo materiales activos
 
     if (!todas || todas === "false") {
-      query += ` AND DATE(s.fecha_salida) = CURRENT_DATE`; // Solo los de hoy
+      query += ` AND date(s.fecha_salida) = date('now')`; // Solo los de hoy
     }
 
     const result = await db.query(query);
@@ -35,7 +35,7 @@ const getSalidaById = async (req, res) => {
        FROM salidas s 
        JOIN materiales m ON s.material_id = m.id 
        JOIN productos p ON s.producto_id = p.id
-       WHERE s.id = $1
+       WHERE s.id = ?
 `,
       [id]
     );
@@ -64,7 +64,7 @@ const createSalida = async (req, res) => {
     // Insertar la salida con el valor de status = 1 por defecto
     const result = await db.query(
       `INSERT INTO salidas (material_id, producto_id, nivel, responsable_nombre, cantidad, rumpero, trabajador, status) 
-       VALUES ($1, $2, $3, $4, $5, $6, $7, 1) RETURNING id`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, 1)`,
       [
         material_id,
         producto_id,
@@ -76,11 +76,12 @@ const createSalida = async (req, res) => {
       ]
     );
 
-    const salidaId = result.rows[0].id;
+    const lastIdResult = await db.query('SELECT last_insert_rowid() as id');
+    const salidaId = lastIdResult.rows[0].id;
 
     // Obtener las primeras 3 letras del material
     const materialResult = await db.query(
-      `SELECT LOWER(LEFT(nombre, 3)) AS codigo_material FROM materiales WHERE id = $1`,
+      `SELECT lower(substr(nombre, 1, 3)) AS codigo_material FROM materiales WHERE id = ?`,
       [material_id]
     );
 
@@ -91,14 +92,14 @@ const createSalida = async (req, res) => {
     const codigo = `${materialResult.rows[0].codigo_material}${salidaId}`;
 
     // Actualizar la salida con el código generado
-    await db.query(`UPDATE salidas SET codigo = $1 WHERE id = $2`, [
+    await db.query(`UPDATE salidas SET codigo = ? WHERE id = ?`, [
       codigo,
       salidaId,
     ]);
 
     // Obtener la salida con el código generado
     const salidaCompleta = await db.query(
-      `SELECT * FROM salidas WHERE id = $1`,
+      `SELECT * FROM salidas WHERE id = ?`,
       [salidaId]
     );
 
@@ -126,8 +127,8 @@ const updateSalida = async (req, res) => {
     // Actualizar la salida incluyendo 'status'
     const result = await db.query(
       `UPDATE salidas 
-       SET material_id = $1, producto_id = $2, nivel = $3, responsable_nombre = $4, cantidad = $5, rumpero = $6, trabajador = $7, status = $8
-       WHERE id = $9 RETURNING *`,
+       SET material_id = ?, producto_id = ?, nivel = ?, responsable_nombre = ?, cantidad = ?, rumpero = ?, trabajador = ?, status = ?
+       WHERE id = ?`,
       [
         material_id,
         producto_id,
@@ -141,13 +142,14 @@ const updateSalida = async (req, res) => {
       ] // Agregamos 'status' en la lista de parámetros
     );
 
-    if (result.rows.length === 0) {
+    const checkResult = await db.query('SELECT * FROM salidas WHERE id = ?', [id]);
+    if (checkResult.rows.length === 0) {
       return res.status(404).json({ message: "Salida no encontrada" });
     }
 
     // Obtener las primeras 3 letras del material
     const materialResult = await db.query(
-      `SELECT LOWER(LEFT(nombre, 3)) AS codigo_material FROM materiales WHERE id = $1`,
+      `SELECT lower(substr(nombre, 1, 3)) AS codigo_material FROM materiales WHERE id = ?`,
       [material_id]
     );
 
@@ -158,14 +160,14 @@ const updateSalida = async (req, res) => {
     const codigo = `${materialResult.rows[0].codigo_material}${id}`;
 
     // Actualizar el código
-    await db.query(`UPDATE salidas SET codigo = $1 WHERE id = $2`, [
+    await db.query(`UPDATE salidas SET codigo = ? WHERE id = ?`, [
       codigo,
       id,
     ]);
 
     // Obtener la salida actualizada
     const salidaActualizada = await db.query(
-      `SELECT * FROM salidas WHERE id = $1`,
+      `SELECT * FROM salidas WHERE id = ?`,
       [id]
     );
 
@@ -181,7 +183,7 @@ const deleteSalida = async (req, res) => {
   const { id } = req.params;
   try {
     const result = await db.query(
-      "DELETE FROM salidas WHERE id = $1 RETURNING *",
+      "DELETE FROM salidas WHERE id = ?",
       [id]
     );
     if (result.rows.length === 0) {
