@@ -1,9 +1,11 @@
 const db = require("../db");
-
+const moment = require("moment");
 // GET: Obtener todas las salidas
 const getSalidas = async (req, res) => {
   try {
     const { todas } = req.query; // Recibir parámetro desde el frontend
+    const fechaHoy = moment().format('YYYY-MM-DD'); // Obtener la fecha actual
+
     let query = `
       SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, p.unidad, 
              s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida, s.status
@@ -13,11 +15,13 @@ const getSalidas = async (req, res) => {
       WHERE m.status = 1 AND s.status = 1`; // Filtrar solo materiales activos
 
     if (!todas || todas === "false") {
-      query += ` AND date(s.fecha_salida) = date('now')`; // Solo los de hoy
+      query += ` AND DATE(s.fecha_salida) = $1`; // Usar parámetro para la fecha
+      const result = await db.query(query, [fechaHoy]);
+      res.json(result.rows);
+    } else {
+      const result = await db.query(query);
+      res.json(result.rows);
     }
-
-    const result = await db.query(query);
-    res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al obtener salidas" });

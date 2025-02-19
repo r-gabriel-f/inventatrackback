@@ -7,7 +7,6 @@ const path = require("path");
 const generateReport = async (req, res) => {
   try {
     const fechaHoy = moment().format("YYYY-MM-DD");
-    console.log(fechaHoy);
 
     // Consulta las salidas del día
     db.all(
