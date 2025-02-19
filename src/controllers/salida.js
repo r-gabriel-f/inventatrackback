@@ -14,14 +14,14 @@ const getSalidas = async (req, res) => {
       JOIN productos p ON s.producto_id = p.id 
       WHERE m.status = 1 AND s.status = 1`; // Filtrar solo materiales activos
 
+    let result;
     if (!todas || todas === "false") {
-      query += ` AND DATE(s.fecha_salida) = $1`; // Usar parámetro para la fecha
-      const result = await db.query(query, [fechaHoy]);
-      res.json(result.rows);
+      query += ` AND DATE(s.fecha_salida) = ?`; // Usar ? en lugar de $1 para better-sqlite3
+      result = await db.query(query, [fechaHoy]);
     } else {
-      const result = await db.query(query);
-      res.json(result.rows);
+      result = await db.query(query, []); // Pasar array vacío para better-sqlite3
     }
+    res.json(result.rows);
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al obtener salidas" });

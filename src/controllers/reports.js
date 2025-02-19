@@ -10,7 +10,7 @@ const generateReport = async (req, res) => {
   try {
     const fechaHoy = moment().format("YYYY-MM-DD");
 
-    db.all(
+    const result = await db.query(
       `SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, s.nivel, 
               s.responsable_nombre, s.fecha_salida, p.unidad, s.rumpero, 
               s.trabajador, s.cantidad
@@ -21,18 +21,16 @@ const generateReport = async (req, res) => {
        AND m.status = 1
        AND s.status = 1
        ORDER BY s.nivel, m.nombre, s.fecha_salida DESC`,
-      [fechaHoy],
-      async (err, salidas) => {
-        if (err) {
-          console.error(err);
-          return res.status(500).json({ message: "Error en la consulta SQL" });
-        }
+      [fechaHoy]
+    );
 
-        if (salidas.length === 0) {
-          return res
-            .status(404)
-            .json({ message: "No hay salidas registradas hoy" });
-        }
+    const salidas = result.rows;
+
+    if (salidas.length === 0) {
+      return res
+        .status(404)
+        .json({ message: "No hay salidas registradas hoy" });
+    }
 
         let qrData = `Reporte de Salidas - ${fechaHoy}\n\n`;
         qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
@@ -167,8 +165,6 @@ const generateReport = async (req, res) => {
         
         const pdfBuffer = doc.output();
         res.end(Buffer.from(pdfBuffer, 'binary'));
-      }
-    );
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al generar el reporte" });
