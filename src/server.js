@@ -18,7 +18,7 @@ app.use('/api', exitRoutes);
 app.use('/api', reportRoutes);
 
 // Iniciar el servidor
-const PORT = 3000;
+const PORT = 65534;
 app.listen(PORT, () => {
   console.log(`Servidor corriendo en puerto ${PORT}`);
 });
