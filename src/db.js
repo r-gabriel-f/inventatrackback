@@ -1,8 +1,15 @@
 const sqlite3 = require('sqlite3').verbose();
 const path = require('path');
+const fs = require('fs');
+
+// Asegurar que el directorio database existe
+const dbDir = path.join(process.cwd(), 'database');
+if (!fs.existsSync(dbDir)) {
+    fs.mkdirSync(dbDir);
+}
 
 // Crear conexión a la base de datos SQLite
-const db = new sqlite3.Database(path.join(__dirname, '../database.sqlite'), (err) => {
+const db = new sqlite3.Database(path.join(process.cwd(), 'database/database.sqlite'), (err) => {
   if (err) {
     console.error('Error al conectar a SQLite:', err.message);
   } else {

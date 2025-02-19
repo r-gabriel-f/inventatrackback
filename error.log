@@ -1,0 +1,16 @@
+pkg/prelude/bootstrap.js:438
+  if (error) throw error;
+             ^
+
+Error: Cannot mkdir in a snapshot. Try mountpoints instead.
+    at mkdirFailInSnapshot (pkg/prelude/bootstrap.js:1633:7)
+    at Object.mkdirSync (pkg/prelude/bootstrap.js:1645:12)
+    at Object.<anonymous> (C:\snapshot\inventatrackback\src\main.js:11:8)
+    at Module._compile (pkg/prelude/bootstrap.js:1926:22)
+    at Module._extensions..js (node:internal/modules/cjs/loader:1166:10)
+    at Module.load (node:internal/modules/cjs/loader:988:32)
+    at Module._load (node:internal/modules/cjs/loader:834:12)
+    at Function.runMain (pkg/prelude/bootstrap.js:1979:12)
+    at node:internal/main/run_main_module:17:47
+
+Node.js v18.5.0

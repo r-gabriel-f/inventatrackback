@@ -1,14 +1,15 @@
-const PDFDocument = require("pdfkit");
+const { jsPDF } = require('jspdf');
+require('jspdf-autotable');
 const QRCode = require("qrcode");
 const moment = require("moment");
 const db = require("../db");
 const path = require("path");
+const fs = require('fs');
 
 const generateReport = async (req, res) => {
   try {
     const fechaHoy = moment().format("YYYY-MM-DD");
 
-    // Consulta las salidas del día
     db.all(
       `SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, s.nivel, 
               s.responsable_nombre, s.fecha_salida, p.unidad, s.rumpero, 
@@ -33,14 +34,10 @@ const generateReport = async (req, res) => {
             .json({ message: "No hay salidas registradas hoy" });
         }
 
-        // Crear contenido del QR con formato de tabla
         let qrData = `Reporte de Salidas - ${fechaHoy}\n\n`;
-
-        // Encabezados
         qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
         qrData += `----------------------------------------------------------------------------------------------\n`;
 
-        // Filas con los datos de la tabla
         salidas.forEach((s) => {
           qrData += `${s.codigo} | ${s.material} | ${s.producto} | ${s.unidad} | ${
             s.nivel
@@ -49,12 +46,12 @@ const generateReport = async (req, res) => {
           } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
         });
 
-        // Generar código QR
         const qrImage = await QRCode.toDataURL(qrData);
 
-        // Crear el PDF
-        const doc = new PDFDocument({
-          margins: { top: 50, bottom: 50, left: 40, right: 40 },
+        const doc = new jsPDF({
+          orientation: 'portrait',
+          unit: 'mm',
+          format: 'a4'
         });
 
         res.setHeader(
@@ -63,64 +60,28 @@ const generateReport = async (req, res) => {
         );
         res.setHeader("Content-Type", "application/pdf");
 
-        doc.pipe(res);
-
-        // Ruta del logo
         const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
+        const logoData = fs.readFileSync(logoPath, { encoding: 'base64' });
 
-        // Agregar el logo
-        const logoSize = 80;
-        doc.image(logoPath, doc.page.margins.left, 30, {
-          width: logoSize,
-          height: logoSize,
-        });
+        // Función para dibujar la cabecera (solo se usará en la primera página)
+        const drawHeader = () => {
+          doc.addImage(logoData, 'JPEG', 20, 15, 35, 35);
+          doc.addImage(qrImage, 'PNG', doc.internal.pageSize.width - 50, 15, 35, 35);
+          
+          doc.setFontSize(12);
+          doc.setTextColor(0);
+          doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, { align: "center" });
+          doc.text("ASISTENCIA SUPERINTENDENCIA MINA", doc.internal.pageSize.width / 2, 32, { align: "center" });
+          
+          doc.setLineWidth(0.5);
+          doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
+          
+          doc.setFontSize(11);
+          doc.text(`Reporte de Salidas - ${fechaHoy}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
+        };
 
-        // Encabezado con título
-        doc.text(
-          "EMPRESA MINERA HUANUNI\nASISTENCIA SUPERINTENDENCIA MINA",
-          0,
-          45,
-          {
-            align: "center",
-            width: doc.page.width,
-          }
-        );
-
-        doc.moveDown(0.5);
-
-        // Dibujar una línea horizontal
-        doc
-          .moveTo(doc.page.margins.left + logoSize + 10, doc.y)
-          .lineTo(500, doc.y)
-          .stroke();
-
-        doc.moveDown(0.5);
-
-        // Texto del reporte
-        doc.fontSize(12).text(`Reporte de Salidas - ${fechaHoy}`, 0, doc.y, {
-          align: "center",
-          width: doc.page.width,
-        });
-
-        doc.moveDown(1);
-
-        const qrSize = 80;
-        doc.image(qrImage, doc.page.width - doc.page.margins.right - qrSize, 30, {
-          width: qrSize,
-          height: qrSize,
-        });
-        doc.moveDown(2);
-
-        // Configuración de la tabla
-        const tableTop = doc.y;
-        const pageWidth =
-          doc.page.width - doc.page.margins.left - doc.page.margins.right;
-
-        // Definir proporciones de las columnas
-        const columnProportions = [7, 12, 12, 13, 8, 8, 12, 12, 10, 11];
-        const columnWidths = columnProportions.map((proportion) =>
-          Math.floor((pageWidth * proportion) / 100)
-        );
+        // Dibujar la cabecera en la primera página
+        drawHeader();
 
         const headers = [
           "Código",
@@ -132,77 +93,80 @@ const generateReport = async (req, res) => {
           "Responsable",
           "Rumpero",
           "Trabajador",
-          "Fecha",
+          "Fecha"
         ];
-        const headerColor = "#0066cc";
 
-        const getXPosition = (index) => {
-          let x = doc.page.margins.left;
-          for (let i = 0; i < index; i++) {
-            x += columnWidths[i];
+        const data = salidas.map(s => [
+          s.codigo,
+          s.nivel,
+          s.material,
+          s.producto,
+          s.unidad,
+          s.cantidad.toString(),
+          s.responsable_nombre,
+          s.rumpero || "-",
+          s.trabajador || "-",
+          moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")
+        ]);
+
+        doc.autoTable({
+          startY: 55,
+          margin: { left: 10, right: 10 },
+          head: [headers],
+          body: data,
+          theme: 'plain',
+          styles: {
+            fontSize: 8,
+            cellPadding: 2,
+            overflow: 'linebreak',
+          },
+          headStyles: {
+            fillColor: false,
+            textColor: [0, 102, 204],
+            fontSize: 8,
+            fontStyle: 'bold'
+          },
+          columnStyles: {
+            0: { cellWidth: 15 },
+            1: { cellWidth: 17 },
+            2: { cellWidth: 20 },
+            3: { cellWidth: 20 },
+            4: { cellWidth: 15 },
+            5: { cellWidth: 17 },
+            6: { cellWidth: 25 },
+            7: { cellWidth: 20 },
+            8: { cellWidth: 20 },
+            9: { cellWidth: 'auto' }
+          },
+          didDrawCell: function (data) {
+            doc.setDrawColor(0); // Color negro
+            doc.setLineWidth(0.2); // Grosor de la línea
+        
+            // Dibujar línea debajo de los encabezados
+            if (data.section === 'head') {
+              doc.line(
+                data.cell.x,
+                data.cell.y + data.cell.height, // Posición Y al final de la celda
+                data.cell.x + data.cell.width,
+                data.cell.y + data.cell.height
+              );
+            }
+        
+            // Dibujar líneas entre filas
+            if (data.section === 'body') {
+              doc.line(
+                data.cell.x,
+                data.cell.y + data.cell.height,
+                data.cell.x + data.cell.width,
+                data.cell.y + data.cell.height
+              );
+            }
           }
-          return x;
-        };
-
-        // Agregar encabezados de la tabla
-        headers.forEach((header, i) => {
-          doc
-            .fillColor(headerColor)
-            .fontSize(8)
-            .text(header, getXPosition(i), tableTop, {
-              width: columnWidths[i],
-              align: "left",
-            });
         });
-
-        doc.fillColor("black");
-        doc.moveDown(0.5);
-
-        // Dibujar línea después del encabezado
-        doc
-          .moveTo(doc.page.margins.left, doc.y)
-          .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-          .stroke();
-
-        let yPosition = doc.y + 10;
-        const rowHeight = 30;
-        salidas.forEach((s) => {
-          // Comprobar si se alcanzó el final de la página
-          if (yPosition + rowHeight > doc.page.height - doc.page.margins.bottom) {
-            doc.addPage(); // Agregar nueva página
-            yPosition = doc.y; // Resetear la posición
-          }
-
-          doc.fontSize(8);
-
-          const writeCell = (text, x, width) => {
-            doc.text(text || "-", x, yPosition, {
-              width: width,
-              height: rowHeight,
-              ellipsis: true,
-            });
-          };
-          writeCell(s.codigo, getXPosition(0), columnWidths[0]);
-          writeCell(s.nivel, getXPosition(1), columnWidths[1]);
-          writeCell(s.material, getXPosition(2), columnWidths[2]);
-          writeCell(s.producto, getXPosition(3), columnWidths[3]);
-          writeCell(s.unidad, getXPosition(4), columnWidths[4]);
-          writeCell(s.cantidad.toString(), getXPosition(5), columnWidths[5]);
-          writeCell(s.responsable_nombre, getXPosition(6), columnWidths[6]);
-          writeCell(s.rumpero, getXPosition(7), columnWidths[7]);
-          writeCell(s.trabajador, getXPosition(8), columnWidths[8]);
-          writeCell(
-            moment(s.fecha_salida).format("DD/MM/YYYY HH:mm"),
-            getXPosition(9),
-            columnWidths[9]
-          );
-
-          yPosition += rowHeight;
-        });
-
-        // Agregar código QR al PDF
-
-        doc.end();
+        
+        
+        const pdfBuffer = doc.output();
+        res.end(Buffer.from(pdfBuffer, 'binary'));
       }
     );
   } catch (err) {
@@ -210,12 +174,10 @@ const generateReport = async (req, res) => {
     res.status(500).json({ message: "Error al generar el reporte" });
   }
 };
-
 const generateMonthlyReport = async (req, res) => {
   try {
     const yearMonth = req.params.yearMonth;
 
-    // Validar formato YYYY-MM
     if (!moment(yearMonth, "YYYY-MM", true).isValid()) {
       return res.status(400).json({
         message: "Formato de fecha inválido. Use YYYY-MM (ejemplo: 2022-01)",
@@ -224,7 +186,6 @@ const generateMonthlyReport = async (req, res) => {
 
     const [year, month] = yearMonth.split("-");
 
-    // Consulta las salidas del mes con nuevo orden
     const result = await db.query(
       `SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, s.nivel, s.responsable_nombre, 
               s.fecha_salida, p.unidad, s.rumpero, s.trabajador, s.cantidad
@@ -246,14 +207,10 @@ const generateMonthlyReport = async (req, res) => {
       });
     }
 
-    // Crear contenido del QR con formato de tabla
     let qrData = `Reporte Mensual de Salidas - ${yearMonth}\n\n`;
-
-    // Encabezados
     qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
     qrData += `-------------------------------------------------------------------------------------------\n`;
 
-    // Filas con los datos de la tabla
     salidas.forEach((s) => {
       qrData += `${s.id} | ${s.material} | ${s.producto} | ${s.unidad} | ${
         s.nivel
@@ -262,12 +219,12 @@ const generateMonthlyReport = async (req, res) => {
       } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
     });
 
-    // Generar código QR
     const qrImage = await QRCode.toDataURL(qrData);
 
-    // Crear el PDF
-    const doc = new PDFDocument({
-      margins: { top: 50, bottom: 50, left: 40, right: 40 },
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
     });
 
     res.setHeader(
@@ -276,78 +233,30 @@ const generateMonthlyReport = async (req, res) => {
     );
     res.setHeader("Content-Type", "application/pdf");
 
-    doc.pipe(res);
-
-    // Ruta del logo
     const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
+    const logoData = fs.readFileSync(logoPath, { encoding: 'base64' });
 
-    // Agregar el logo
-    const logoSize = 80;
-    doc.image(logoPath, doc.page.margins.left, 30, {
-      width: logoSize,
-      height: logoSize,
-    });
+    // Función para dibujar la cabecera (solo se usará en la primera página)
+    const drawHeader = () => {
+      doc.addImage(logoData, 'JPEG', 20, 15, 35, 35);
+      doc.addImage(qrImage, 'PNG', doc.internal.pageSize.width - 50, 15, 35, 35);
+      
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, { align: "center" });
+      doc.text("ASISTENCIA SUPERINTENDENCIA MINA", doc.internal.pageSize.width / 2, 32, { align: "center" });
+      
+      doc.setLineWidth(0.5);
+      doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
+      
+      const monthName = moment(yearMonth).locale("es").format("MMMM");
+      const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      doc.setFontSize(11);
+      doc.text(`Reporte Mensual de Salidas - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
+    };
 
-    // Encabezado con título
-    doc.text(
-      "EMPRESA MINERA HUANUNI\nASISTENCIA SUPERINTENDENCIA MINA",
-      0,
-      45,
-      {
-        align: "center",
-        width: doc.page.width,
-      }
-    );
-
-    doc.moveDown(0.5);
-
-    // Dibujar una línea horizontal
-    doc
-      .moveTo(doc.page.margins.left + logoSize + 10, doc.y)
-      .lineTo(500, doc.y)
-      .stroke();
-
-    doc.moveDown(0.5);
-
-    // Texto del reporte con mes y año
-    const monthName = moment(yearMonth).locale("es").format("MMMM");
-    const capitalizedMonthName =
-      monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
-    doc
-      .fontSize(12)
-      .text(
-        `Reporte Mensual de Salidas - ${capitalizedMonthName} ${year}`,
-        0,
-        doc.y,
-        {
-          align: "center",
-          width: doc.page.width,
-        }
-      );
-
-    // **Agregar espacio antes del QR**
-    doc.moveDown(1); // Ajusta este valor si el QR se sobrepone al contenido
-
-    // Agregar código QR al PDF
-    const qrSize = 80;
-    doc.image(qrImage, doc.page.width - doc.page.margins.right - qrSize, 30, {
-      width: qrSize,
-      height: qrSize,
-    });
-
-    doc.moveDown(2); // Mueve hacia abajo antes de comenzar la tabla
-
-    // Configuración de la tabla
-    const tableTop = doc.y;
-    const pageWidth =
-      doc.page.width - doc.page.margins.left - doc.page.margins.right;
-
-    // Definir proporciones de las columnas
-    const columnProportions = [7, 12, 12, 13, 8, 8, 12, 12, 10, 11];
-    const columnWidths = columnProportions.map((proportion) =>
-      Math.floor((pageWidth * proportion) / 100)
-    );
+    // Dibujar la cabecera en la primera página
+    drawHeader();
 
     const headers = [
       "Código",
@@ -361,74 +270,78 @@ const generateMonthlyReport = async (req, res) => {
       "Trabajador",
       "Fecha",
     ];
-    const headerColor = "#0066cc";
 
-    const getXPosition = (index) => {
-      let x = doc.page.margins.left;
-      for (let i = 0; i < index; i++) {
-        x += columnWidths[i];
+    const data = salidas.map(s => [
+      s.codigo,
+      s.nivel,
+      s.material,
+      s.producto,
+      s.unidad,
+      s.cantidad.toString(),
+      s.responsable_nombre,
+      s.rumpero || "-",
+      s.trabajador || "-",
+      moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")
+    ]);
+
+    doc.autoTable({
+      startY: 55,
+      margin: { left: 10, right: 10 },
+      head: [headers],
+      body: data,
+      theme: 'plain',
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        overflow: 'linebreak',
+      },
+      headStyles: {
+        fillColor: false,
+        textColor: [0, 102, 204],
+        fontSize: 8,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 17 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 15 },
+        5: { cellWidth: 17 },
+        6: { cellWidth: 25 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 20 },
+        9: { cellWidth: 'auto' }
+      },
+      didDrawCell: function (data) {
+        doc.setDrawColor(0); // Color negro
+        doc.setLineWidth(0.2); // Grosor de la línea
+    
+        // Dibujar línea debajo de los encabezados
+        if (data.section === 'head') {
+          doc.line(
+            data.cell.x,
+            data.cell.y + data.cell.height, // Posición Y al final de la celda
+            data.cell.x + data.cell.width,
+            data.cell.y + data.cell.height
+          );
+        }
+    
+        // Dibujar líneas entre filas
+        if (data.section === 'body') {
+          doc.line(
+            data.cell.x,
+            data.cell.y + data.cell.height,
+            data.cell.x + data.cell.width,
+            data.cell.y + data.cell.height
+          );
+        }
       }
-      return x;
-    };
-
-    // Agregar encabezados de la tabla
-    headers.forEach((header, i) => {
-      doc
-        .fillColor(headerColor)
-        .fontSize(8)
-        .text(header, getXPosition(i), tableTop, {
-          width: columnWidths[i],
-          align: "left",
-        });
     });
 
-    doc.fillColor("black");
-    doc.moveDown(0.5);
+    const pdfBuffer = doc.output();
+    res.end(Buffer.from(pdfBuffer, 'binary'));
 
-    // Dibujar línea después del encabezado
-    doc
-      .moveTo(doc.page.margins.left, doc.y)
-      .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-      .stroke();
-
-    let yPosition = doc.y + 10;
-    const rowHeight = 30;
-    salidas.forEach((s, index) => {
-      // Comprobar si se alcanzó el final de la página
-      if (yPosition + rowHeight > doc.page.height - doc.page.margins.bottom) {
-        doc.addPage(); // Agregar nueva página
-        yPosition = doc.y; // Resetear la posición
-      }
-
-      doc.fontSize(8);
-
-      const writeCell = (text, x, width) => {
-        doc.text(text || "-", x, yPosition, {
-          width: width,
-          height: rowHeight,
-          ellipsis: true,
-        });
-      };
-
-      writeCell(s.codigo, getXPosition(0), columnWidths[0]);
-      writeCell(s.nivel, getXPosition(1), columnWidths[1]);
-      writeCell(s.material, getXPosition(2), columnWidths[2]);
-      writeCell(s.producto, getXPosition(3), columnWidths[3]);
-      writeCell(s.unidad, getXPosition(4), columnWidths[4]);
-      writeCell(s.cantidad.toString(), getXPosition(5), columnWidths[5]);
-      writeCell(s.responsable_nombre, getXPosition(6), columnWidths[6]);
-      writeCell(s.rumpero, getXPosition(7), columnWidths[7]);
-      writeCell(s.trabajador, getXPosition(8), columnWidths[8]);
-      writeCell(
-        moment(s.fecha_salida).format("DD/MM/YYYY HH:mm"),
-        getXPosition(9),
-        columnWidths[9]
-      );
-
-      yPosition += rowHeight;
-    });
-
-    doc.end();
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al generar el reporte mensual" });
@@ -447,7 +360,6 @@ const generateMonthlyReportTotal = async (req, res) => {
 
     const [year, month] = yearMonth.split("-");
 
-    // Consulta modificada para SQLite
     const result = await db.query(
       `SELECT 
           s.nivel, 
@@ -466,9 +378,6 @@ const generateMonthlyReportTotal = async (req, res) => {
       [yearMonth]
     );
 
-    console.log('Parámetros de búsqueda:', { yearMonth, year, month });
-    console.log('Resultados encontrados:', result.rows);
-
     const salidas = result.rows;
 
     if (!salidas || salidas.length === 0) {
@@ -477,7 +386,6 @@ const generateMonthlyReportTotal = async (req, res) => {
       });
     }
 
-    // Crear contenido del QR con formato de tabla
     let qrData = `Reporte Mensual de Salidas - ${yearMonth}\n\n`;
     qrData += `Nivel | Material | Producto | Unidad | Total Cantidad\n`;
     qrData += `-----------------------------------------------------------\n`;
@@ -486,128 +394,104 @@ const generateMonthlyReportTotal = async (req, res) => {
       qrData += `${s.nivel} | ${s.material} | ${s.producto} | ${s.unidad} | ${s.total_cantidad}\n`;
     });
 
-    // Generar código QR
     const qrImage = await QRCode.toDataURL(qrData);
 
-    // Crear el PDF
-    const doc = new PDFDocument({
-      margins: { top: 50, bottom: 50, left: 40, right: 40 },
-      size: 'A4'
+    const doc = new jsPDF({
+      orientation: 'portrait',
+      unit: 'mm',
+      format: 'a4'
     });
 
-    // Configurar respuesta
     res.setHeader('Content-Disposition', `attachment; filename=reporte_mensual_total_${yearMonth}.pdf`);
     res.setHeader('Content-Type', 'application/pdf');
-    doc.pipe(res);
 
-    // Agregar logo y encabezado
     const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
-    const logoSize = 80;
-    
-    doc.image(logoPath, doc.page.margins.left, 30, {
-      width: logoSize,
-      height: logoSize,
-    });
+    const logoData = fs.readFileSync(logoPath, { encoding: 'base64' });
 
-    doc.fontSize(14)
-       .text("EMPRESA MINERA HUANUNI\nASISTENCIA SUPERINTENDENCIA MINA",
-             0, 45, {
-               align: "center",
-               width: doc.page.width,
-             });
-
-    doc.moveDown(0.5);
-    doc.moveTo(doc.page.margins.left + logoSize + 10, doc.y)
-       .lineTo(500, doc.y)
-       .stroke();
-
-    doc.moveDown(0.5);
-    
-    const monthName = moment(yearMonth).locale("es").format("MMMM");
-    const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
-
-    doc.fontSize(12)
-       .text(`Reporte Mensual de Salidas Totales - ${capitalizedMonthName} ${year}`,
-             0, doc.y, {
-               align: "center",
-               width: doc.page.width,
-             });
-
-    // Agregar QR
-    const qrSize = 80;
-    doc.image(qrImage, 
-              doc.page.width - doc.page.margins.right - qrSize, 
-              30, {
-                width: qrSize,
-                height: qrSize
-              });
-
-    doc.moveDown(2);
-
-    // Configuración de la tabla
-    const tableTop = doc.y;
-    const pageWidth = doc.page.width - doc.page.margins.left - doc.page.margins.right;
-    const columnProportions = [20, 25, 25, 15, 15];
-    const columnWidths = columnProportions.map(p => Math.floor((pageWidth * p) / 100));
-    const headers = ["Nivel", "Material", "Producto", "Unidad", "Total Cantidad"];
-
-    // Función helper para posiciones X
-    const getXPosition = (index) => {
-      let x = doc.page.margins.left;
-      for (let i = 0; i < index; i++) {
-        x += columnWidths[i];
-      }
-      return x;
+    // Función para dibujar la cabecera (solo se usará en la primera página)
+    const drawHeader = () => {
+      doc.addImage(logoData, 'JPEG', 20, 15, 35, 35);
+      doc.addImage(qrImage, 'PNG', doc.internal.pageSize.width - 50, 15, 35, 35);
+      
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, { align: "center" });
+      doc.text("ASISTENCIA SUPERINTENDENCIA MINA", doc.internal.pageSize.width / 2, 32, { align: "center" });
+      
+      doc.setLineWidth(0.5);
+      doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
+      
+      const monthName = moment(yearMonth).locale("es").format("MMMM");
+      const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      doc.setFontSize(11);
+      doc.text(`Reporte Mensual de Salidas Totales - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
     };
 
-    // Dibujar encabezados
-    headers.forEach((header, i) => {
-      doc.fillColor('#0066cc')
-         .fontSize(8)
-         .text(header, getXPosition(i), tableTop, {
-           width: columnWidths[i],
-           align: 'left'
-         });
-    });
+    // Dibujar la cabecera en la primera página
+    drawHeader();
 
-    doc.fillColor('black').moveDown(0.5);
+    const headers = ["Nivel", "Material", "Producto", "Unidad", "Total Cantidad"];
 
-    // Línea después de encabezados
-    doc.moveTo(doc.page.margins.left, doc.y)
-       .lineTo(doc.page.width - doc.page.margins.right, doc.y)
-       .stroke();
+    const data = salidas.map(s => [
+      s.nivel,
+      s.material,
+      s.producto,
+      s.unidad,
+      s.total_cantidad.toString()
+    ]);
 
-    // Dibujar filas
-    let yPosition = doc.y + 10;
-    const rowHeight = 30;
-
-    salidas.forEach((s) => {
-      if (yPosition + rowHeight > doc.page.height - doc.page.margins.bottom) {
-        doc.addPage();
-        yPosition = doc.page.margins.top;
+    doc.autoTable({
+      startY: 55,
+      margin: { left: 10, right: 10 },
+      head: [headers],
+      body: data,
+      theme: 'plain',
+      styles: {
+        fontSize: 8,
+        cellPadding: 2,
+        overflow: 'linebreak',
+      },
+      headStyles: {
+        fillColor: false,
+        textColor: [0, 102, 204],
+        fontSize: 8,
+        fontStyle: 'bold'
+      },
+      columnStyles: {
+        0: { cellWidth: 35 },
+        1: { cellWidth: 45 },
+        2: { cellWidth: 45 },
+        3: { cellWidth: 25 },
+        4: { cellWidth: 30 }
+      },
+      didDrawCell: function (data) {
+        doc.setDrawColor(0); // Color negro
+        doc.setLineWidth(0.2); // Grosor de la línea
+    
+        // Dibujar línea debajo de los encabezados
+        if (data.section === 'head') {
+          doc.line(
+            data.cell.x,
+            data.cell.y + data.cell.height, // Posición Y al final de la celda
+            data.cell.x + data.cell.width,
+            data.cell.y + data.cell.height
+          );
+        }
+    
+        // Dibujar líneas entre filas
+        if (data.section === 'body') {
+          doc.line(
+            data.cell.x,
+            data.cell.y + data.cell.height,
+            data.cell.x + data.cell.width,
+            data.cell.y + data.cell.height
+          );
+        }
       }
-
-      doc.fontSize(8);
-
-      const writeCell = (text, x, width) => {
-        doc.text(text || "-", x, yPosition, {
-          width: width,
-          height: rowHeight,
-          ellipsis: true
-        });
-      };
-
-      writeCell(s.nivel, getXPosition(0), columnWidths[0]);
-      writeCell(s.material, getXPosition(1), columnWidths[1]);
-      writeCell(s.producto, getXPosition(2), columnWidths[2]);
-      writeCell(s.unidad, getXPosition(3), columnWidths[3]);
-      writeCell(s.total_cantidad.toString(), getXPosition(4), columnWidths[4]);
-
-      yPosition += rowHeight;
     });
 
-    // Finalizar documento
-    doc.end();
+    const pdfBuffer = doc.output();
+    res.end(Buffer.from(pdfBuffer, 'binary'));
 
   } catch (err) {
     console.error('Error en generateMonthlyReportTotal:', err);
@@ -617,6 +501,7 @@ const generateMonthlyReportTotal = async (req, res) => {
     });
   }
 };
+
 module.exports = {
   generateReport,
   generateMonthlyReport,
