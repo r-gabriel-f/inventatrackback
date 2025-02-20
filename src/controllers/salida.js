@@ -80,12 +80,13 @@ const createSalida = async (req, res) => {
       ]
     );
 
-    const lastIdResult = await db.query('SELECT last_insert_rowid() as id');
+    // Obtener el ID recién insertado
+    const lastIdResult = await db.query("SELECT last_insert_rowid() as id");
     const salidaId = lastIdResult.rows[0].id;
 
-    // Obtener las primeras 3 letras del material
+    // Obtener las primeras 3 letras del material en mayúsculas
     const materialResult = await db.query(
-      `SELECT lower(substr(nombre, 1, 3)) AS codigo_material FROM materiales WHERE id = ?`,
+      `SELECT UPPER(SUBSTR(nombre, 1, 3)) AS codigo_material FROM materiales WHERE id = ?`,
       [material_id]
     );
 
@@ -93,11 +94,22 @@ const createSalida = async (req, res) => {
       return res.status(400).json({ message: "Material no encontrado" });
     }
 
-    const codigo = `${materialResult.rows[0].codigo_material}${salidaId}`;
+    const codigoMaterial = materialResult.rows[0].codigo_material;
+
+    // Contar cuántas salidas existen con el mismo material_id ANTES del registro actual
+    const countResult = await db.query(
+      `SELECT COUNT(*) AS count FROM salidas WHERE material_id = ? AND id < ?`,
+      [material_id, salidaId]
+    );
+
+    const count = countResult.rows[0].count + 1; // Ahora sí comenzará desde 1
+
+    // Formatear el número con 4 dígitos
+    const codigoSalida = `${codigoMaterial}-${String(count).padStart(4, "0")}`;
 
     // Actualizar la salida con el código generado
     await db.query(`UPDATE salidas SET codigo = ? WHERE id = ?`, [
-      codigo,
+      codigoSalida,
       salidaId,
     ]);
 
