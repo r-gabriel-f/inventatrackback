@@ -6,3 +6,4 @@ database.sqlite
 *.sqlite3
 build
 dist
+build
