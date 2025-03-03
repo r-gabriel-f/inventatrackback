@@ -1,10 +1,10 @@
-const { jsPDF } = require('jspdf');
-require('jspdf-autotable');
+const { jsPDF } = require("jspdf");
+require("jspdf-autotable");
 const QRCode = require("qrcode");
 const moment = require("moment");
 const db = require("../db");
 const path = require("path");
-const fs = require('fs');
+const fs = require("fs");
 
 const generateReport = async (req, res) => {
   try {
@@ -32,139 +32,157 @@ const generateReport = async (req, res) => {
         .json({ message: "No hay salidas registradas hoy" });
     }
 
-        let qrData = `Reporte de Salidas - ${fechaHoy}\n\n`;
-        qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
-        qrData += `----------------------------------------------------------------------------------------------\n`;
+    let qrData = `Reporte de Salidas - ${fechaHoy}\n\n`;
+    qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
+    qrData += `----------------------------------------------------------------------------------------------\n`;
 
-        salidas.forEach((s) => {
-          qrData += `${s.codigo} | ${s.material} | ${s.producto} | ${s.unidad} | ${
-            s.nivel
-          } | ${s.cantidad} | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${
-            s.trabajador || "-"
-          } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
-        });
+    salidas.forEach((s) => {
+      qrData += `${s.codigo} | ${s.material} | ${s.producto} | ${s.unidad} | ${
+        s.nivel
+      } | ${s.cantidad} | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${
+        s.trabajador || "-"
+      } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
+    });
 
-        const qrImage = await QRCode.toDataURL(qrData);
+    const qrImage = await QRCode.toDataURL(qrData);
 
-        const doc = new jsPDF({
-          orientation: 'portrait',
-          unit: 'mm',
-          format: 'a4'
-        });
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
 
-        res.setHeader(
-          "Content-Disposition",
-          `attachment; filename=reporte_${fechaHoy}.pdf`
-        );
-        res.setHeader("Content-Type", "application/pdf");
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=reporte_${fechaHoy}.pdf`
+    );
+    res.setHeader("Content-Type", "application/pdf");
 
-        const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
-        const logoData = fs.readFileSync(logoPath, { encoding: 'base64' });
+    const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
+    const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
 
-        // Función para dibujar la cabecera (solo se usará en la primera página)
-        const drawHeader = () => {
-          doc.addImage(logoData, 'JPEG', 20, 15, 35, 35);
-          doc.addImage(qrImage, 'PNG', doc.internal.pageSize.width - 50, 15, 35, 35);
-          
-          doc.setFontSize(12);
-          doc.setTextColor(0);
-          doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, { align: "center" });
-          doc.text("ASISTENCIA SUPERINTENDENCIA MINA", doc.internal.pageSize.width / 2, 32, { align: "center" });
-          
-          doc.setLineWidth(0.5);
-          doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
-          
-          doc.setFontSize(11);
-          doc.text(`Reporte de Salidas - ${fechaHoy}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
-        };
+    // Función para dibujar la cabecera (solo se usará en la primera página)
+    const drawHeader = () => {
+      doc.addImage(logoData, "JPEG", 20, 15, 35, 35);
+      doc.addImage(
+        qrImage,
+        "PNG",
+        doc.internal.pageSize.width - 50,
+        15,
+        35,
+        35
+      );
 
-        // Dibujar la cabecera en la primera página
-        drawHeader();
+      doc.setFontSize(12);
+      doc.setTextColor(0);
+      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, {
+        align: "center",
+      });
+      doc.text(
+        "ASISTENCIA SUPERINTENDENCIA MINA",
+        doc.internal.pageSize.width / 2,
+        32,
+        { align: "center" }
+      );
 
-        const headers = [
-          "Código",
-          "Nivel",
-          "Material",
-          "Producto",
-          "Unidad",
-          "Cantidad",
-          "Responsable",
-          "Rumpero",
-          "Trabajador",
-          "Fecha"
-        ];
+      doc.setLineWidth(0.5);
+      doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
 
-        const data = salidas.map(s => [
-          s.codigo,
-          s.nivel,
-          s.material,
-          s.producto,
-          s.unidad,
-          s.cantidad.toString(),
-          s.responsable_nombre,
-          s.rumpero || "-",
-          s.trabajador || "-",
-          moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")
-        ]);
+      doc.setFontSize(11);
+      doc.text(
+        `Reporte de Salidas - ${fechaHoy}`,
+        doc.internal.pageSize.width / 2,
+        45,
+        { align: "center" }
+      );
+    };
 
-        doc.autoTable({
-          startY: 55,
-          margin: { left: 10, right: 10 },
-          head: [headers],
-          body: data,
-          theme: 'plain',
-          styles: {
-            fontSize: 6,
-            cellPadding: 2,
-            overflow: 'linebreak',
-          },
-          headStyles: {
-            fillColor: false,
-            textColor: [0, 102, 204],
-            fontSize: 7,
-            fontStyle: 'bold'
-          },
-          columnStyles: {
-            0: { cellWidth: 15 },
-            1: { cellWidth: 17 },
-            2: { cellWidth: 20 },
-            3: { cellWidth: 20 },
-            4: { cellWidth: 15 },
-            5: { cellWidth: 17 },
-            6: { cellWidth: 25 },
-            7: { cellWidth: 20 },
-            8: { cellWidth: 20 },
-            9: { cellWidth: 'auto' }
-          },
-          didDrawCell: function (data) {
-            doc.setDrawColor(0); // Color negro
-            doc.setLineWidth(0.2); // Grosor de la línea
-        
-            // Dibujar línea debajo de los encabezados
-            if (data.section === 'head') {
-              doc.line(
-                data.cell.x,
-                data.cell.y + data.cell.height, // Posición Y al final de la celda
-                data.cell.x + data.cell.width,
-                data.cell.y + data.cell.height
-              );
-            }
-        
-            // Dibujar líneas entre filas
-            if (data.section === 'body') {
-              doc.line(
-                data.cell.x,
-                data.cell.y + data.cell.height,
-                data.cell.x + data.cell.width,
-                data.cell.y + data.cell.height
-              );
-            }
-          }
-        });
-        
-        
-        const pdfBuffer = doc.output();
-        res.end(Buffer.from(pdfBuffer, 'binary'));
+    // Dibujar la cabecera en la primera página
+    drawHeader();
+
+    const headers = [
+      "Código",
+      "Nivel",
+      "Material",
+      "Producto",
+      "Unidad",
+      "Cantidad",
+      "Responsable",
+      "Rumpero",
+      "Trabajador",
+      "Fecha",
+    ];
+
+    const data = salidas.map((s) => [
+      s.codigo,
+      s.nivel,
+      s.material,
+      s.producto,
+      s.unidad,
+      s.cantidad.toString(),
+      s.responsable_nombre,
+      s.rumpero || "-",
+      s.trabajador || "-",
+      moment(s.fecha_salida).format("DD/MM/YYYY HH:mm"),
+    ]);
+
+    doc.autoTable({
+      startY: 55,
+      margin: { left: 10, right: 10 },
+      head: [headers],
+      body: data,
+      theme: "plain",
+      styles: {
+        fontSize: 6,
+        cellPadding: 2,
+        overflow: "linebreak",
+      },
+      headStyles: {
+        fillColor: false,
+        textColor: [0, 102, 204],
+        fontSize: 7,
+        fontStyle: "bold",
+      },
+      columnStyles: {
+        0: { cellWidth: 15 },
+        1: { cellWidth: 17 },
+        2: { cellWidth: 20 },
+        3: { cellWidth: 20 },
+        4: { cellWidth: 15 },
+        5: { cellWidth: 17 },
+        6: { cellWidth: 25 },
+        7: { cellWidth: 20 },
+        8: { cellWidth: 20 },
+        9: { cellWidth: "auto" },
+      },
+      didDrawCell: function (data) {
+        doc.setDrawColor(0); // Color negro
+        doc.setLineWidth(0.2); // Grosor de la línea
+
+        // Dibujar línea debajo de los encabezados
+        if (data.section === "head") {
+          doc.line(
+            data.cell.x,
+            data.cell.y + data.cell.height, // Posición Y al final de la celda
+            data.cell.x + data.cell.width,
+            data.cell.y + data.cell.height
+          );
+        }
+
+        // Dibujar líneas entre filas
+        if (data.section === "body") {
+          doc.line(
+            data.cell.x,
+            data.cell.y + data.cell.height,
+            data.cell.x + data.cell.width,
+            data.cell.y + data.cell.height
+          );
+        }
+      },
+    });
+
+    const pdfBuffer = doc.output();
+    res.end(Buffer.from(pdfBuffer, "binary"));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al generar el reporte" });
@@ -218,9 +236,9 @@ const generateMonthlyReport = async (req, res) => {
     const qrImage = await QRCode.toDataURL(qrData);
 
     const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
     });
 
     res.setHeader(
@@ -230,25 +248,45 @@ const generateMonthlyReport = async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
 
     const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
-    const logoData = fs.readFileSync(logoPath, { encoding: 'base64' });
+    const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
 
     // Función para dibujar la cabecera (solo se usará en la primera página)
     const drawHeader = () => {
-      doc.addImage(logoData, 'JPEG', 20, 15, 35, 35);
-      doc.addImage(qrImage, 'PNG', doc.internal.pageSize.width - 50, 15, 35, 35);
-      
+      doc.addImage(logoData, "JPEG", 20, 15, 35, 35);
+      doc.addImage(
+        qrImage,
+        "PNG",
+        doc.internal.pageSize.width - 50,
+        15,
+        35,
+        35
+      );
+
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, { align: "center" });
-      doc.text("ASISTENCIA SUPERINTENDENCIA MINA", doc.internal.pageSize.width / 2, 32, { align: "center" });
-      
+      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, {
+        align: "center",
+      });
+      doc.text(
+        "ASISTENCIA SUPERINTENDENCIA MINA",
+        doc.internal.pageSize.width / 2,
+        32,
+        { align: "center" }
+      );
+
       doc.setLineWidth(0.5);
       doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
-      
+
       const monthName = moment(yearMonth).locale("es").format("MMMM");
-      const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      const capitalizedMonthName =
+        monthName.charAt(0).toUpperCase() + monthName.slice(1);
       doc.setFontSize(11);
-      doc.text(`Reporte Mensual de Salidas - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 40, { align: "center" });
+      doc.text(
+        `Reporte Mensual de Salidas - ${capitalizedMonthName} ${year}`,
+        doc.internal.pageSize.width / 2,
+        40,
+        { align: "center" }
+      );
     };
 
     // Dibujar la cabecera en la primera página
@@ -267,7 +305,7 @@ const generateMonthlyReport = async (req, res) => {
       "Fecha",
     ];
 
-    const data = salidas.map(s => [
+    const data = salidas.map((s) => [
       s.codigo,
       s.nivel,
       s.material,
@@ -277,7 +315,7 @@ const generateMonthlyReport = async (req, res) => {
       s.responsable_nombre,
       s.rumpero || "-",
       s.trabajador || "-",
-      moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")
+      moment(s.fecha_salida).format("DD/MM/YYYY HH:mm"),
     ]);
 
     doc.autoTable({
@@ -285,17 +323,17 @@ const generateMonthlyReport = async (req, res) => {
       margin: { left: 10, right: 10 },
       head: [headers],
       body: data,
-      theme: 'plain',
+      theme: "plain",
       styles: {
         fontSize: 6,
         cellPadding: 2,
-        overflow: 'linebreak',
+        overflow: "linebreak",
       },
       headStyles: {
         fillColor: false,
         textColor: [0, 102, 204],
         fontSize: 7,
-        fontStyle: 'bold'
+        fontStyle: "bold",
       },
       columnStyles: {
         0: { cellWidth: 15 },
@@ -307,14 +345,14 @@ const generateMonthlyReport = async (req, res) => {
         6: { cellWidth: 25 },
         7: { cellWidth: 20 },
         8: { cellWidth: 20 },
-        9: { cellWidth: 'auto' }
+        9: { cellWidth: "auto" },
       },
       didDrawCell: function (data) {
         doc.setDrawColor(0); // Color negro
         doc.setLineWidth(0.2); // Grosor de la línea
-    
+
         // Dibujar línea debajo de los encabezados
-        if (data.section === 'head') {
+        if (data.section === "head") {
           doc.line(
             data.cell.x,
             data.cell.y + data.cell.height, // Posición Y al final de la celda
@@ -322,9 +360,9 @@ const generateMonthlyReport = async (req, res) => {
             data.cell.y + data.cell.height
           );
         }
-    
+
         // Dibujar líneas entre filas
-        if (data.section === 'body') {
+        if (data.section === "body") {
           doc.line(
             data.cell.x,
             data.cell.y + data.cell.height,
@@ -332,12 +370,11 @@ const generateMonthlyReport = async (req, res) => {
             data.cell.y + data.cell.height
           );
         }
-      }
+      },
     });
 
     const pdfBuffer = doc.output();
-    res.end(Buffer.from(pdfBuffer, 'binary'));
-
+    res.end(Buffer.from(pdfBuffer, "binary"));
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: "Error al generar el reporte mensual" });
@@ -393,47 +430,76 @@ const generateMonthlyReportTotal = async (req, res) => {
     const qrImage = await QRCode.toDataURL(qrData);
 
     const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
     });
 
-    res.setHeader('Content-Disposition', `attachment; filename=reporte_mensual_total_${yearMonth}.pdf`);
-    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=reporte_mensual_total_${yearMonth}.pdf`
+    );
+    res.setHeader("Content-Type", "application/pdf");
 
     const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
-    const logoData = fs.readFileSync(logoPath, { encoding: 'base64' });
+    const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
 
     // Función para dibujar la cabecera (solo se usará en la primera página)
     const drawHeader = () => {
-      doc.addImage(logoData, 'JPEG', 20, 15, 35, 35);
-      doc.addImage(qrImage, 'PNG', doc.internal.pageSize.width - 50, 15, 35, 35);
-      
+      doc.addImage(logoData, "JPEG", 20, 15, 35, 35);
+      doc.addImage(
+        qrImage,
+        "PNG",
+        doc.internal.pageSize.width - 50,
+        15,
+        35,
+        35
+      );
+
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, { align: "center" });
-      doc.text("ASISTENCIA SUPERINTENDENCIA MINA", doc.internal.pageSize.width / 2, 32, { align: "center" });
-      
+      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, {
+        align: "center",
+      });
+      doc.text(
+        "ASISTENCIA SUPERINTENDENCIA MINA",
+        doc.internal.pageSize.width / 2,
+        32,
+        { align: "center" }
+      );
+
       doc.setLineWidth(0.5);
       doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
-      
+
       const monthName = moment(yearMonth).locale("es").format("MMMM");
-      const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      const capitalizedMonthName =
+        monthName.charAt(0).toUpperCase() + monthName.slice(1);
       doc.setFontSize(11);
-      doc.text(`Reporte Mensual de Salidas Totales - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 40, { align: "center" });
+      doc.text(
+        `Reporte Mensual de Salidas Totales - ${capitalizedMonthName} ${year}`,
+        doc.internal.pageSize.width / 2,
+        40,
+        { align: "center" }
+      );
     };
 
     // Dibujar la cabecera en la primera página
     drawHeader();
 
-    const headers = ["Nivel", "Material", "Producto", "Unidad", "Total Cantidad"];
+    const headers = [
+      "Nivel",
+      "Material",
+      "Producto",
+      "Unidad",
+      "Total Cantidad",
+    ];
 
-    const data = salidas.map(s => [
+    const data = salidas.map((s) => [
       s.nivel,
       s.material,
       s.producto,
       s.unidad,
-      s.total_cantidad.toString()
+      s.total_cantidad.toString(),
     ]);
 
     doc.autoTable({
@@ -441,31 +507,31 @@ const generateMonthlyReportTotal = async (req, res) => {
       margin: { left: 10, right: 10 },
       head: [headers],
       body: data,
-      theme: 'plain',
+      theme: "plain",
       styles: {
         fontSize: 8,
         cellPadding: 2,
-        overflow: 'linebreak',
+        overflow: "linebreak",
       },
       headStyles: {
         fillColor: false,
         textColor: [0, 102, 204],
         fontSize: 8,
-        fontStyle: 'bold'
+        fontStyle: "bold",
       },
       columnStyles: {
         0: { cellWidth: 35 },
         1: { cellWidth: 45 },
         2: { cellWidth: 45 },
         3: { cellWidth: 25 },
-        4: { cellWidth: 30 }
+        4: { cellWidth: 30 },
       },
       didDrawCell: function (data) {
         doc.setDrawColor(0); // Color negro
         doc.setLineWidth(0.2); // Grosor de la línea
-    
+
         // Dibujar línea debajo de los encabezados
-        if (data.section === 'head') {
+        if (data.section === "head") {
           doc.line(
             data.cell.x,
             data.cell.y + data.cell.height, // Posición Y al final de la celda
@@ -473,9 +539,9 @@ const generateMonthlyReportTotal = async (req, res) => {
             data.cell.y + data.cell.height
           );
         }
-    
+
         // Dibujar líneas entre filas
-        if (data.section === 'body') {
+        if (data.section === "body") {
           doc.line(
             data.cell.x,
             data.cell.y + data.cell.height,
@@ -483,21 +549,19 @@ const generateMonthlyReportTotal = async (req, res) => {
             data.cell.y + data.cell.height
           );
         }
-      }
+      },
     });
 
     const pdfBuffer = doc.output();
-    res.end(Buffer.from(pdfBuffer, 'binary'));
-
+    res.end(Buffer.from(pdfBuffer, "binary"));
   } catch (err) {
-    console.error('Error en generateMonthlyReportTotal:', err);
-    res.status(500).json({ 
+    console.error("Error en generateMonthlyReportTotal:", err);
+    res.status(500).json({
       message: "Error al generar el reporte mensual",
-      error: err.message 
+      error: err.message,
     });
   }
 };
-
 
 const generateMonthlyLevelReport = async (req, res) => {
   try {
@@ -554,9 +618,9 @@ const generateMonthlyLevelReport = async (req, res) => {
     const qrImage = await QRCode.toDataURL(qrData);
 
     const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
     });
 
     res.setHeader(
@@ -566,27 +630,52 @@ const generateMonthlyLevelReport = async (req, res) => {
     res.setHeader("Content-Type", "application/pdf");
 
     const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
-    const logoData = fs.readFileSync(logoPath, { encoding: 'base64' });
+    const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
 
     // Función para dibujar la cabecera
     const drawHeader = () => {
-      doc.addImage(logoData, 'JPEG', 20, 15, 35, 35);
-      doc.addImage(qrImage, 'PNG', doc.internal.pageSize.width - 50, 15, 35, 35);
-      
+      doc.addImage(logoData, "JPEG", 20, 15, 35, 35);
+      doc.addImage(
+        qrImage,
+        "PNG",
+        doc.internal.pageSize.width - 50,
+        15,
+        35,
+        35
+      );
+
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, { align: "center" });
-      doc.text("ASISTENCIA SUPERINTENDENCIA MINA", doc.internal.pageSize.width / 2, 32, { align: "center" });
-      
+      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, {
+        align: "center",
+      });
+      doc.text(
+        "ASISTENCIA SUPERINTENDENCIA MINA",
+        doc.internal.pageSize.width / 2,
+        32,
+        { align: "center" }
+      );
+
       doc.setLineWidth(0.5);
       doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
-      
+
       const monthName = moment(yearMonth).locale("es").format("MMMM");
-      const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      const capitalizedMonthName =
+        monthName.charAt(0).toUpperCase() + monthName.slice(1);
       doc.setFontSize(11);
-      doc.text("Reporte Mensual de Salidas", doc.internal.pageSize.width / 2, 40, { align: "center" });
-      doc.text(`Nivel ${nivel} - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
- };
+      doc.text(
+        "Reporte Mensual de Salidas",
+        doc.internal.pageSize.width / 2,
+        40,
+        { align: "center" }
+      );
+      doc.text(
+        `Nivel ${nivel} - ${capitalizedMonthName} ${year}`,
+        doc.internal.pageSize.width / 2,
+        45,
+        { align: "center" }
+      );
+    };
 
     // Dibujar la cabecera en la primera página
     drawHeader();
@@ -603,7 +692,7 @@ const generateMonthlyLevelReport = async (req, res) => {
       "Fecha",
     ];
 
-    const data = salidas.map(s => [
+    const data = salidas.map((s) => [
       s.codigo,
       s.material,
       s.producto,
@@ -612,7 +701,7 @@ const generateMonthlyLevelReport = async (req, res) => {
       s.responsable_nombre,
       s.rumpero || "-",
       s.trabajador || "-",
-      moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")
+      moment(s.fecha_salida).format("DD/MM/YYYY HH:mm"),
     ]);
 
     doc.autoTable({
@@ -620,17 +709,17 @@ const generateMonthlyLevelReport = async (req, res) => {
       margin: { left: 10, right: 10 },
       head: [headers],
       body: data,
-      theme: 'plain',
+      theme: "plain",
       styles: {
         fontSize: 6,
         cellPadding: 2,
-        overflow: 'linebreak',
+        overflow: "linebreak",
       },
       headStyles: {
         fillColor: false,
         textColor: [0, 102, 204],
         fontSize: 7,
-        fontStyle: 'bold'
+        fontStyle: "bold",
       },
       columnStyles: {
         0: { cellWidth: 20 },
@@ -641,13 +730,13 @@ const generateMonthlyLevelReport = async (req, res) => {
         5: { cellWidth: 25 },
         6: { cellWidth: 20 },
         7: { cellWidth: 20 },
-        8: { cellWidth: 'auto' }
+        8: { cellWidth: "auto" },
       },
       didDrawCell: function (data) {
         doc.setDrawColor(0);
         doc.setLineWidth(0.2);
-    
-        if (data.section === 'head') {
+
+        if (data.section === "head") {
           doc.line(
             data.cell.x,
             data.cell.y + data.cell.height,
@@ -655,8 +744,8 @@ const generateMonthlyLevelReport = async (req, res) => {
             data.cell.y + data.cell.height
           );
         }
-    
-        if (data.section === 'body') {
+
+        if (data.section === "body") {
           doc.line(
             data.cell.x,
             data.cell.y + data.cell.height,
@@ -664,15 +753,16 @@ const generateMonthlyLevelReport = async (req, res) => {
             data.cell.y + data.cell.height
           );
         }
-      }
+      },
     });
 
     const pdfBuffer = doc.output();
-    res.end(Buffer.from(pdfBuffer, 'binary'));
-
+    res.end(Buffer.from(pdfBuffer, "binary"));
   } catch (err) {
     console.error(err);
-    res.status(500).json({ message: "Error al generar el reporte mensual por nivel" });
+    res
+      .status(500)
+      .json({ message: "Error al generar el reporte mensual por nivel" });
   }
 };
 
@@ -731,47 +821,75 @@ const generateMonthlyLevelReportTotal = async (req, res) => {
     const qrImage = await QRCode.toDataURL(qrData);
 
     const doc = new jsPDF({
-      orientation: 'portrait',
-      unit: 'mm',
-      format: 'a4'
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
     });
 
-    res.setHeader('Content-Disposition', `attachment; filename=reporte_mensual_total_nivel_${nivel}_${yearMonth}.pdf`);
-    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=reporte_mensual_total_nivel_${nivel}_${yearMonth}.pdf`
+    );
+    res.setHeader("Content-Type", "application/pdf");
 
     const logoPath = path.join(__dirname, "../assets/empresa.jpeg");
-    const logoData = fs.readFileSync(logoPath, { encoding: 'base64' });
+    const logoData = fs.readFileSync(logoPath, { encoding: "base64" });
 
     // Función para dibujar la cabecera
     const drawHeader = () => {
-      doc.addImage(logoData, 'JPEG', 20, 15, 35, 35);
-      doc.addImage(qrImage, 'PNG', doc.internal.pageSize.width - 50, 15, 35, 35);
-      
+      doc.addImage(logoData, "JPEG", 20, 15, 35, 35);
+      doc.addImage(
+        qrImage,
+        "PNG",
+        doc.internal.pageSize.width - 50,
+        15,
+        35,
+        35
+      );
+
       doc.setFontSize(12);
       doc.setTextColor(0);
-      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, { align: "center" });
-      doc.text("ASISTENCIA SUPERINTENDENCIA MINA", doc.internal.pageSize.width / 2, 32, { align: "center" });
-      
+      doc.text("EMPRESA MINERA HUANUNI", doc.internal.pageSize.width / 2, 25, {
+        align: "center",
+      });
+      doc.text(
+        "ASISTENCIA SUPERINTENDENCIA MINA",
+        doc.internal.pageSize.width / 2,
+        32,
+        { align: "center" }
+      );
+
       doc.setLineWidth(0.5);
       doc.line(65, 35, doc.internal.pageSize.width - 65, 35);
-      
+
       const monthName = moment(yearMonth).locale("es").format("MMMM");
-      const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
+      const capitalizedMonthName =
+        monthName.charAt(0).toUpperCase() + monthName.slice(1);
       doc.setFontSize(11);
-      doc.text("Reporte Mensual de Salidas Totales", doc.internal.pageSize.width / 2, 40, { align: "center" });
-      doc.text(`Nivel ${nivel} - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
-        };
+      doc.text(
+        "Reporte Mensual de Salidas Totales",
+        doc.internal.pageSize.width / 2,
+        40,
+        { align: "center" }
+      );
+      doc.text(
+        `Nivel ${nivel} - ${capitalizedMonthName} ${year}`,
+        doc.internal.pageSize.width / 2,
+        45,
+        { align: "center" }
+      );
+    };
 
     // Dibujar la cabecera en la primera página
     drawHeader();
 
     const headers = ["Material", "Producto", "Unidad", "Total Cantidad"];
 
-    const data = salidas.map(s => [
+    const data = salidas.map((s) => [
       s.material,
       s.producto,
       s.unidad,
-      s.total_cantidad.toString()
+      s.total_cantidad.toString(),
     ]);
 
     doc.autoTable({
@@ -779,29 +897,29 @@ const generateMonthlyLevelReportTotal = async (req, res) => {
       margin: { left: 10, right: 10 },
       head: [headers],
       body: data,
-      theme: 'plain',
+      theme: "plain",
       styles: {
         fontSize: 6,
         cellPadding: 2,
-        overflow: 'linebreak',
+        overflow: "linebreak",
       },
       headStyles: {
         fillColor: false,
         textColor: [0, 102, 204],
         fontSize: 7,
-        fontStyle: 'bold'
+        fontStyle: "bold",
       },
       columnStyles: {
         0: { cellWidth: 55 },
         1: { cellWidth: 55 },
         2: { cellWidth: 35 },
-        3: { cellWidth: 35 }
+        3: { cellWidth: 35 },
       },
       didDrawCell: function (data) {
         doc.setDrawColor(0);
         doc.setLineWidth(0.2);
-    
-        if (data.section === 'head') {
+
+        if (data.section === "head") {
           doc.line(
             data.cell.x,
             data.cell.y + data.cell.height,
@@ -809,8 +927,8 @@ const generateMonthlyLevelReportTotal = async (req, res) => {
             data.cell.y + data.cell.height
           );
         }
-    
-        if (data.section === 'body') {
+
+        if (data.section === "body") {
           doc.line(
             data.cell.x,
             data.cell.y + data.cell.height,
@@ -818,17 +936,84 @@ const generateMonthlyLevelReportTotal = async (req, res) => {
             data.cell.y + data.cell.height
           );
         }
-      }
+      },
     });
 
     const pdfBuffer = doc.output();
-    res.end(Buffer.from(pdfBuffer, 'binary'));
-
+    res.end(Buffer.from(pdfBuffer, "binary"));
   } catch (err) {
-    console.error('Error en generateMonthlyLevelReportTotal:', err);
-    res.status(500).json({ 
+    console.error("Error en generateMonthlyLevelReportTotal:", err);
+    res.status(500).json({
       message: "Error al generar el reporte mensual por nivel",
-      error: err.message 
+      error: err.message,
+    });
+  }
+};
+
+const generateQrCodeById = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const result = await db.query(
+      `SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, p.unidad, 
+              s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida
+       FROM salidas s 
+       JOIN materiales m ON s.material_id = m.id 
+       JOIN productos p ON s.producto_id = p.id
+       WHERE s.id = ? AND s.status = 1`,
+      [id]
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "Salida no encontrada" });
+    }
+
+    const salida = result.rows[0];
+
+    // Crear el contenido del QR con los campos específicos solicitados
+    let qrData = `Código: ${salida.codigo}\n`;
+    qrData += `Material: ${salida.material}\n`;
+    qrData += `Producto: ${salida.producto}\n`;
+    qrData += `Unidad: ${salida.unidad}\n`;
+    qrData += `Cantidad: ${salida.cantidad}\n`;
+    qrData += `Responsable: ${salida.responsable_nombre}\n`;
+    qrData += `Rumpero: ${salida.rumpero || "-"}\n`;
+    qrData += `Trabajador: ${salida.trabajador || "-"}\n`;
+    qrData += `Fecha: ${moment(salida.fecha_salida).format(
+      "DD/MM/YYYY HH:mm"
+    )}\n`;
+
+    // Generar la imagen QR
+    const qrImage = await QRCode.toDataURL(qrData);
+
+    // Crear el PDF
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=qr_salida_${id}.pdf`
+    );
+    res.setHeader("Content-Type", "application/pdf");
+
+    const qrSize = 10; // Tamaño del QR en mm
+    const marginRight = 30; // Espacio a la derecha en mm
+    const pageWidth = doc.internal.pageSize.width;
+
+    const qrX = pageWidth - qrSize - marginRight; // Calcula la posición con margen derecho
+    const qrY = 0// Posición en la parte superior (10 mm desde arriba)
+
+    doc.addImage(qrImage, "PNG", qrX, qrY, qrSize, qrSize);
+
+    const pdfBuffer = doc.output();
+    res.end(Buffer.from(pdfBuffer, "binary"));
+  } catch (err) {
+    console.error("Error en generateQrCodeById:", err);
+    res.status(500).json({
+      message: "Error al generar el QR code",
+      error: err.message,
     });
   }
 };
@@ -838,5 +1023,6 @@ module.exports = {
   generateMonthlyReport,
   generateMonthlyReportTotal,
   generateMonthlyLevelReport,
-  generateMonthlyLevelReportTotal
+  generateMonthlyLevelReportTotal,
+  generateQrCodeById,
 };

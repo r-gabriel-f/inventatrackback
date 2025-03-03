@@ -7,5 +7,6 @@ router.get('/reportes/mensual/:yearMonth', reportsController.generateMonthlyRepo
 router.get('/reportes/mensual-total/:yearMonth', reportsController.generateMonthlyReportTotal);
 router.get('/reportes/mensual/:yearMonth/:nivel', reportsController.generateMonthlyLevelReport);
 router.get('/reportes/mensual-total/:yearMonth/:nivel', reportsController.generateMonthlyLevelReportTotal);
+router.get('/qr/:id', reportsController.generateQrCodeById);
 
 module.exports = router;
