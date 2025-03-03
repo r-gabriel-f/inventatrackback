@@ -114,14 +114,14 @@ const generateReport = async (req, res) => {
           body: data,
           theme: 'plain',
           styles: {
-            fontSize: 8,
+            fontSize: 6,
             cellPadding: 2,
             overflow: 'linebreak',
           },
           headStyles: {
             fillColor: false,
             textColor: [0, 102, 204],
-            fontSize: 8,
+            fontSize: 7,
             fontStyle: 'bold'
           },
           columnStyles: {
@@ -248,7 +248,7 @@ const generateMonthlyReport = async (req, res) => {
       const monthName = moment(yearMonth).locale("es").format("MMMM");
       const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
       doc.setFontSize(11);
-      doc.text(`Reporte Mensual de Salidas - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
+      doc.text(`Reporte Mensual de Salidas - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 40, { align: "center" });
     };
 
     // Dibujar la cabecera en la primera página
@@ -287,14 +287,14 @@ const generateMonthlyReport = async (req, res) => {
       body: data,
       theme: 'plain',
       styles: {
-        fontSize: 8,
+        fontSize: 6,
         cellPadding: 2,
         overflow: 'linebreak',
       },
       headStyles: {
         fillColor: false,
         textColor: [0, 102, 204],
-        fontSize: 8,
+        fontSize: 7,
         fontStyle: 'bold'
       },
       columnStyles: {
@@ -420,7 +420,7 @@ const generateMonthlyReportTotal = async (req, res) => {
       const monthName = moment(yearMonth).locale("es").format("MMMM");
       const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
       doc.setFontSize(11);
-      doc.text(`Reporte Mensual de Salidas Totales - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
+      doc.text(`Reporte Mensual de Salidas Totales - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 40, { align: "center" });
     };
 
     // Dibujar la cabecera en la primera página
@@ -584,8 +584,9 @@ const generateMonthlyLevelReport = async (req, res) => {
       const monthName = moment(yearMonth).locale("es").format("MMMM");
       const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
       doc.setFontSize(11);
-      doc.text(`Reporte Mensual de Salidas - Nivel ${nivel} - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
-    };
+      doc.text("Reporte Mensual de Salidas", doc.internal.pageSize.width / 2, 40, { align: "center" });
+      doc.text(`Nivel ${nivel} - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
+ };
 
     // Dibujar la cabecera en la primera página
     drawHeader();
@@ -621,18 +622,18 @@ const generateMonthlyLevelReport = async (req, res) => {
       body: data,
       theme: 'plain',
       styles: {
-        fontSize: 8,
+        fontSize: 6,
         cellPadding: 2,
         overflow: 'linebreak',
       },
       headStyles: {
         fillColor: false,
         textColor: [0, 102, 204],
-        fontSize: 8,
+        fontSize: 7,
         fontStyle: 'bold'
       },
       columnStyles: {
-        0: { cellWidth: 15 },
+        0: { cellWidth: 20 },
         1: { cellWidth: 25 },
         2: { cellWidth: 25 },
         3: { cellWidth: 15 },
@@ -757,8 +758,9 @@ const generateMonthlyLevelReportTotal = async (req, res) => {
       const monthName = moment(yearMonth).locale("es").format("MMMM");
       const capitalizedMonthName = monthName.charAt(0).toUpperCase() + monthName.slice(1);
       doc.setFontSize(11);
-      doc.text(`Reporte Mensual de Salidas Totales - Nivel ${nivel} - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
-    };
+      doc.text("Reporte Mensual de Salidas Totales", doc.internal.pageSize.width / 2, 40, { align: "center" });
+      doc.text(`Nivel ${nivel} - ${capitalizedMonthName} ${year}`, doc.internal.pageSize.width / 2, 45, { align: "center" });
+        };
 
     // Dibujar la cabecera en la primera página
     drawHeader();
@@ -779,14 +781,14 @@ const generateMonthlyLevelReportTotal = async (req, res) => {
       body: data,
       theme: 'plain',
       styles: {
-        fontSize: 8,
+        fontSize: 6,
         cellPadding: 2,
         overflow: 'linebreak',
       },
       headStyles: {
         fillColor: false,
         textColor: [0, 102, 204],
-        fontSize: 8,
+        fontSize: 7,
         fontStyle: 'bold'
       },
       columnStyles: {

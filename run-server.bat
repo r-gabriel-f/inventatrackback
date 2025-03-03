@@ -1,6 +1,4 @@
-echo Starting server...
-build\inventario-server.exe
+@echo off
+build\inventario-server.exe > error.log 2>&1
 if %errorlevel% neq 0 (
-    echo Server execution failed. Check error.log for details.
-    pause
-)
+    exit /b %errorlevel%)
