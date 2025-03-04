@@ -8,5 +8,6 @@ router.get('/reportes/mensual-total/:yearMonth', reportsController.generateMonth
 router.get('/reportes/mensual/:yearMonth/:nivel', reportsController.generateMonthlyLevelReport);
 router.get('/reportes/mensual-total/:yearMonth/:nivel', reportsController.generateMonthlyLevelReportTotal);
 router.get('/qr/:id', reportsController.generateQrCodeById);
+router.post('/qr/multiple', reportsController.generateQrCodeByIds);
 
 module.exports = router;

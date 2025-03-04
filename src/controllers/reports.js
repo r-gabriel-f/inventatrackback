@@ -998,14 +998,14 @@ const generateQrCodeById = async (req, res) => {
     );
     res.setHeader("Content-Type", "application/pdf");
 
-    const qrSize = 10; // Tamaño del QR en mm
-    const marginRight = 30; // Espacio a la derecha en mm
+    const qrSize = 20; // Tamaño del QR en mm
     const pageWidth = doc.internal.pageSize.width;
-
-    const qrX = pageWidth - qrSize - marginRight; // Calcula la posición con margen derecho
-    const qrY = 0// Posición en la parte superior (10 mm desde arriba)
-
+    
+    const qrX = (pageWidth - qrSize) / 2; // Centrar horizontalmente
+    const qrY = 0; // Dejar un pequeño margen desde arriba
+    
     doc.addImage(qrImage, "PNG", qrX, qrY, qrSize, qrSize);
+    
 
     const pdfBuffer = doc.output();
     res.end(Buffer.from(pdfBuffer, "binary"));
@@ -1018,6 +1018,77 @@ const generateQrCodeById = async (req, res) => {
   }
 };
 
+const generateQrCodeByIds = async (req, res) => {
+  try {
+    const { ids } = req.body;
+    
+    if (!ids || !Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ message: "Se requiere un array de IDs válido" });
+    }
+
+    // Consultar todas las salidas con los IDs proporcionados
+    const placeholders = ids.map(() => '?').join(',');
+    const result = await db.query(
+      `SELECT s.id, s.codigo, m.nombre AS material, p.nombre AS producto, p.unidad, 
+              s.cantidad, s.rumpero, s.nivel, s.responsable_nombre, s.trabajador, s.fecha_salida
+       FROM salidas s 
+       JOIN materiales m ON s.material_id = m.id 
+       JOIN productos p ON s.producto_id = p.id
+       WHERE s.id IN (${placeholders}) AND s.status = 1`,
+      ids
+    );
+
+    if (result.rows.length === 0) {
+      return res.status(404).json({ message: "No se encontraron salidas con los IDs proporcionados" });
+    }
+
+    const salidas = result.rows;
+
+    // Crear el contenido del QR con el formato especificado
+    let qrData = `Código | Material | Producto | Unidad | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
+    qrData += `-------------------------------------------------------------------------------------------\n`;
+    
+    salidas.forEach(salida => {
+      qrData += `${salida.codigo} | ${salida.material} | ${salida.producto} | ${salida.unidad} | ${salida.cantidad} | ${
+        salida.responsable_nombre} | ${salida.rumpero || "-"} | ${salida.trabajador || "-"} | ${
+        moment(salida.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
+    });
+
+    // Generar la imagen QR
+    const qrImage = await QRCode.toDataURL(qrData);
+
+    // Crear el PDF
+    const doc = new jsPDF({
+      orientation: "portrait",
+      unit: "mm",
+      format: "a4",
+    });
+
+    res.setHeader(
+      "Content-Disposition",
+      `attachment; filename=qr_salidas_multiples.pdf`
+    );
+    res.setHeader("Content-Type", "application/pdf");
+
+    const qrSize = 20; // Tamaño del QR en mm
+    const marginRight = 30; // Espacio a la derecha en mm
+    const pageWidth = doc.internal.pageSize.width;
+
+    const qrX = pageWidth - qrSize - marginRight; // Calcula la posición con margen derecho
+    const qrY = 0// Posición en la parte superior (10 mm desde arriba)
+
+    doc.addImage(qrImage, "PNG", qrX, qrY, qrSize, qrSize);
+    const pdfBuffer = doc.output();
+    res.end(Buffer.from(pdfBuffer, "binary"));
+  } catch (err) {
+    console.error("Error en generateQrCodeByIds:", err);
+    res.status(500).json({
+      message: "Error al generar el QR code para múltiples salidas",
+      error: err.message,
+    });
+  }
+};
+
 module.exports = {
   generateReport,
   generateMonthlyReport,
@@ -1025,4 +1096,5 @@ module.exports = {
   generateMonthlyLevelReport,
   generateMonthlyLevelReportTotal,
   generateQrCodeById,
+  generateQrCodeByIds,
 };
