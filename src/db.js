@@ -44,6 +44,20 @@ db.exec(`CREATE TABLE IF NOT EXISTS salidas (
     FOREIGN KEY (producto_id) REFERENCES productos(id) ON DELETE CASCADE
 )`);
 
+// Crear tabla para niveles
+db.exec(`CREATE TABLE IF NOT EXISTS niveles (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL UNIQUE,
+    status INTEGER DEFAULT 1
+)`);
+
+// Crear tabla para usuarios
+db.exec(`CREATE TABLE IF NOT EXISTS usuarios (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    nombre TEXT NOT NULL UNIQUE,
+    status INTEGER DEFAULT 1
+)`);
+
 // Agregar método query para mantener compatibilidad con el código existente
 db.query = function (sql, params = []) {
     try {
