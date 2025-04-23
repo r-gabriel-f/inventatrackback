@@ -32,16 +32,11 @@ const generateReport = async (req, res) => {
         .json({ message: "No hay salidas registradas hoy" });
     }
 
-    let qrData = `Reporte de Salidas - ${fechaHoy}\n\n`;
-    qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
-    qrData += `----------------------------------------------------------------------------------------------\n`;
-
+    // Solo incluir los códigos en el QR
+    let qrData = `Código\n`;
+    
     salidas.forEach((s) => {
-      qrData += `${s.codigo} | ${s.material} | ${s.producto} | ${s.unidad} | ${
-        s.nivel
-      } | ${s.cantidad} | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${
-        s.trabajador || "-"
-      } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
+      qrData += `${s.codigo}\n`;
     });
 
     const qrImage = await QRCode.toDataURL(qrData);
@@ -221,16 +216,11 @@ const generateMonthlyReport = async (req, res) => {
       });
     }
 
-    let qrData = `Reporte Mensual de Salidas - ${yearMonth}\n\n`;
-    qrData += `Código | Material | Producto | Unidad | Nivel | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
-    qrData += `-------------------------------------------------------------------------------------------\n`;
-
+    // Solo incluir los códigos en el QR
+    let qrData = `Código\n`;
+    
     salidas.forEach((s) => {
-      qrData += `${s.id} | ${s.material} | ${s.producto} | ${s.unidad} | ${
-        s.nivel
-      } | ${s.cantidad} | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${
-        s.trabajador || "-"
-      } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
+      qrData += `${s.codigo}\n`;
     });
 
     const qrImage = await QRCode.toDataURL(qrData);
@@ -419,12 +409,11 @@ const generateMonthlyReportTotal = async (req, res) => {
       });
     }
 
-    let qrData = `Reporte Mensual de Salidas - ${yearMonth}\n\n`;
-    qrData += `Nivel | Material | Producto | Unidad | Total Cantidad\n`;
-    qrData += `-----------------------------------------------------------\n`;
-
+    // Solo incluir los códigos en el QR
+    let qrData = `Código\n`;
+    
     salidas.forEach((s) => {
-      qrData += `${s.nivel} | ${s.material} | ${s.producto} | ${s.unidad} | ${s.total_cantidad}\n`;
+      qrData += `${s.nivel}-${s.material}-${s.producto}\n`;
     });
 
     const qrImage = await QRCode.toDataURL(qrData);
@@ -603,16 +592,11 @@ const generateMonthlyLevelReport = async (req, res) => {
       });
     }
 
-    let qrData = `Reporte Mensual de Salidas - Nivel ${nivel} - ${yearMonth}\n\n`;
-    qrData += `Código | Material | Producto | Unidad | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
-    qrData += `-------------------------------------------------------------------------------------------\n`;
-
+    // Solo incluir los códigos en el QR
+    let qrData = `Código\n`;
+    
     salidas.forEach((s) => {
-      qrData += `${s.id} | ${s.material} | ${s.producto} | ${s.unidad} | ${
-        s.cantidad
-      } | ${s.responsable_nombre} | ${s.rumpero || "-"} | ${
-        s.trabajador || "-"
-      } | ${moment(s.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
+      qrData += `${s.codigo}\n`;
     });
 
     const qrImage = await QRCode.toDataURL(qrData);
@@ -810,12 +794,11 @@ const generateMonthlyLevelReportTotal = async (req, res) => {
       });
     }
 
-    let qrData = `Reporte Mensual de Salidas - Nivel ${nivel} - ${yearMonth}\n\n`;
-    qrData += `Material | Producto | Unidad | Total Cantidad\n`;
-    qrData += `-----------------------------------------------------------\n`;
-
+    // Solo incluir los códigos en el QR
+    let qrData = `Código\n`;
+    
     salidas.forEach((s) => {
-      qrData += `${s.material} | ${s.producto} | ${s.unidad} | ${s.total_cantidad}\n`;
+      qrData += `${s.material}-${s.producto}\n`;
     });
 
     const qrImage = await QRCode.toDataURL(qrData);
@@ -969,18 +952,8 @@ const generateQrCodeById = async (req, res) => {
 
     const salida = result.rows[0];
 
-    // Crear el contenido del QR con los campos específicos solicitados
-    let qrData = `Código: ${salida.codigo}\n`;
-    qrData += `Material: ${salida.material}\n`;
-    qrData += `Producto: ${salida.producto}\n`;
-    qrData += `Unidad: ${salida.unidad}\n`;
-    qrData += `Cantidad: ${salida.cantidad}\n`;
-    qrData += `Responsable: ${salida.responsable_nombre}\n`;
-    qrData += `Rumpero: ${salida.rumpero || "-"}\n`;
-    qrData += `Trabajador: ${salida.trabajador || "-"}\n`;
-    qrData += `Fecha: ${moment(salida.fecha_salida).format(
-      "DD/MM/YYYY HH:mm"
-    )}\n`;
+    // Solo incluir el código en el QR
+    let qrData = `${salida.codigo}`;
 
     // Generar la imagen QR
     const qrImage = await QRCode.toDataURL(qrData);
@@ -1002,7 +975,7 @@ const generateQrCodeById = async (req, res) => {
     const pageWidth = doc.internal.pageSize.width;
     
     const qrX = (pageWidth - qrSize) / 2; // Centrar horizontalmente
-    const qrY = 0; // Dejar un pequeño margen desde arriba
+    const qrY = -1; // Dejar un pequeño margen desde arriba
     
     doc.addImage(qrImage, "PNG", qrX, qrY, qrSize, qrSize);
     
@@ -1044,14 +1017,11 @@ const generateQrCodeByIds = async (req, res) => {
 
     const salidas = result.rows;
 
-    // Crear el contenido del QR con el formato especificado
-    let qrData = `Código | Material | Producto | Unidad | Cantidad | Responsable | Rumpero | Trabajador | Fecha\n`;
-    qrData += `-------------------------------------------------------------------------------------------\n`;
+    // Solo incluir los códigos en el QR
+    let qrData = `Código\n`;
     
     salidas.forEach(salida => {
-      qrData += `${salida.codigo} | ${salida.material} | ${salida.producto} | ${salida.unidad} | ${salida.cantidad} | ${
-        salida.responsable_nombre} | ${salida.rumpero || "-"} | ${salida.trabajador || "-"} | ${
-        moment(salida.fecha_salida).format("DD/MM/YYYY HH:mm")}\n`;
+      qrData += `${salida.codigo}\n`;
     });
 
     // Generar la imagen QR
@@ -1070,14 +1040,13 @@ const generateQrCodeByIds = async (req, res) => {
     );
     res.setHeader("Content-Type", "application/pdf");
 
-    const qrSize = 20; // Tamaño del QR en mm
-    const marginRight = 30; // Espacio a la derecha en mm
-    const pageWidth = doc.internal.pageSize.width;
-
-    const qrX = pageWidth - qrSize - marginRight; // Calcula la posición con margen derecho
-    const qrY = 0// Posición en la parte superior (10 mm desde arriba)
-
+    const qrSize = 25; // Tamaño del QR en mm
+    const marginLeft = 34; // Espacio a la izquierda en mm
+    const qrX = marginLeft; // Margen a la izquierda
+    const qrY = 0; // Posición desde la parte superior en mm
+    
     doc.addImage(qrImage, "PNG", qrX, qrY, qrSize, qrSize);
+    
     const pdfBuffer = doc.output();
     res.end(Buffer.from(pdfBuffer, "binary"));
   } catch (err) {

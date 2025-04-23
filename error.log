@@ -1,2 +1,28 @@
 Conexión exitosa a SQLite
-Servidor corriendo en puerto 65534
+node:events:505
+      throw er; // Unhandled 'error' event
+      ^
+
+Error: listen EADDRINUSE: address already in use :::65534
+    at Server.setupListenHandle [as _listen2] (node:net:1372:16)
+    at listenInCluster (node:net:1420:12)
+    at Server.listen (node:net:1508:7)
+    at Function.listen (C:\snapshot\inventatrackback\node_modules\express\lib\application.js:635:24)
+    at Object.<anonymous> (C:\snapshot\inventatrackback\src\server.js:22:5)
+    at Module._compile (pkg/prelude/bootstrap.js:1926:22)
+    at Object.Module._extensions..js (node:internal/modules/cjs/loader:1159:10)
+    at Module.load (node:internal/modules/cjs/loader:981:32)
+    at Function.Module._load (node:internal/modules/cjs/loader:822:12)
+    at Function.runMain (pkg/prelude/bootstrap.js:1979:12)
+Emitted 'error' event on Server instance at:
+    at emitErrorNT (node:net:1399:8)
+    at processTicksAndRejections (node:internal/process/task_queues:83:21)
+    at process.runNextTicks [as _tickCallback] (node:internal/process/task_queues:65:3)
+    at Function.runMain (pkg/prelude/bootstrap.js:1980:13)
+    at node:internal/main/run_main_module:17:47 {
+  code: 'EADDRINUSE',
+  errno: -4091,
+  syscall: 'listen',
+  address: '::',
+  port: 65534
+}
